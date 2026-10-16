@@ -105,4 +105,25 @@ public class SchedulingEngine {
         }
         return true;
     }
+    // For testing purposes, do not touch
+    /*
+    public static void main(String[] args) {
+        System.out.println("--- Starting UniMatrix Scheduling Engine Test ---");
+        
+        SchedulingEngine engine = new SchedulingEngine();
+        
+        // Define a start date for the exam week (e.g., today or a future date)
+        LocalDate startDate = LocalDate.now().plusDays(7);
+        
+        System.out.println("Running scheduling algorithm starting from: " + startDate);
+        boolean success = engine.generateMasterSchedule(startDate);
+        
+        if (success) {
+            System.out.println("SUCCESS: Master schedule generated and saved to database!");
+        } else {
+            System.out.println("FAILURE: Schedule generation failed. Ensure your database has rooms, block sections, courses, and faculty records populated.");
+        }
+    }
+    */
+    
 }
