@@ -74,6 +74,8 @@ public class LoginView extends JFrame {
             JOptionPane.showMessageDialog(this, "Login Successful!", "Success", JOptionPane.INFORMATION_MESSAGE);
             this.dispose(); // Close login window
 
+            // Open Main Dashboard View
+            new MainDashboardView().setVisible(true);
             
         } else {
             JOptionPane.showMessageDialog(this, "Invalid username or password.", "Access Denied", JOptionPane.ERROR_MESSAGE);
@@ -88,4 +90,5 @@ public class LoginView extends JFrame {
             new LoginView().setVisible(true);
         });
     }
+
 }
