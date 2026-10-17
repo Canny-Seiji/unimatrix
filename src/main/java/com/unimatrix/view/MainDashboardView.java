@@ -3,6 +3,7 @@ package com.unimatrix.view;
 import com.formdev.flatlaf.FlatLightLaf;
 
 import javax.swing.*;
+import javax.swing.border.Border;
 import java.awt.*;
 
 public class MainDashboardView extends JFrame {
@@ -23,16 +24,28 @@ public class MainDashboardView extends JFrame {
         // Main layout using BorderLayout
         setLayout(new BorderLayout());
 
-        // --- 1. Sidebar Navigation Panel ---
+        // --- 1. Sidebar Container Setup ---
+        JPanel sidebarContainer = new JPanel(new BorderLayout());
+        sidebarContainer.setPreferredSize(new Dimension(200, getHeight()));
+        sidebarContainer.setBackground(Color.WHITE); 
+
+        // FIX: Changed side padding from 15 to 0 so buttons can touch the edges!
+        // Parameters: createEmptyBorder(top, left, bottom, right)
+        Border padding = BorderFactory.createEmptyBorder(20, 0, 20, 0); 
+        Border rightLine = BorderFactory.createMatteBorder(0, 0, 0, 1, Color.GRAY); 
+        sidebarContainer.setBorder(BorderFactory.createCompoundBorder(rightLine, padding));
+
+        // --- 2. Sidebar Navigation Panel ---
         JPanel sidebarPanel = new JPanel();
-        sidebarPanel.setLayout(new GridLayout(6, 1, 5, 5));
-        sidebarPanel.setPreferredSize(new Dimension(220, getHeight()));
-        sidebarPanel.setBackground(new Color(33, 37, 41)); // Dark modern sidebar
-        sidebarPanel.setBorder(BorderFactory.createEmptyBorder(20, 15, 20, 15));
+        sidebarPanel.setLayout(new GridLayout(0, 1, 0, 0)); 
+        sidebarPanel.setOpaque(false); 
 
         // Brand / Title inside Sidebar
-        JLabel brandLabel = new JLabel("UniMatrix Admin", JLabel.CENTER);
-        brandLabel.setForeground(Color.WHITE);
+        // FIX: Because we removed the panel margins, add a small left-margin directly 
+        // to the label border so the "UniMatrix" text doesn't look glued to the left screen edge.
+        JLabel brandLabel = new JLabel("UniMatrix", JLabel.LEFT);
+        brandLabel.setBorder(BorderFactory.createEmptyBorder(0, 15, 10, 0)); // Spacing just for the text title
+        brandLabel.setForeground(new Color(33, 37, 41)); 
         brandLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
         sidebarPanel.add(brandLabel);
 
@@ -44,6 +57,7 @@ public class MainDashboardView extends JFrame {
         JButton btnExport = createSidebarButton("Export Reports");
         JButton btnLogout = createSidebarButton("Logout");
 
+        // Add buttons to the layout panel
         sidebarPanel.add(btnHome);
         sidebarPanel.add(btnManageData);
         sidebarPanel.add(btnScheduler);
@@ -51,7 +65,9 @@ public class MainDashboardView extends JFrame {
         sidebarPanel.add(btnExport);
         sidebarPanel.add(btnLogout);
 
-        add(sidebarPanel, BorderLayout.WEST);
+        // Anchor to the top and load into frame
+        sidebarContainer.add(sidebarPanel, BorderLayout.NORTH);
+        add(sidebarContainer, BorderLayout.WEST);
 
         // --- 2. Dynamic Content Area (CardLayout) ---
         cardLayout = new CardLayout();
@@ -77,7 +93,6 @@ public class MainDashboardView extends JFrame {
             int choice = JOptionPane.showConfirmDialog(this, "Are you sure you want to log out?", "Logout", JOptionPane.YES_NO_OPTION);
             if (choice == JOptionPane.YES_OPTION) {
                 dispose();
-                new LoginView().setVisible(true); // Return to login
             }
         });
     }
@@ -85,12 +100,30 @@ public class MainDashboardView extends JFrame {
     // Helper method to style sidebar buttons consistently
     private JButton createSidebarButton(String text) {
         JButton button = new JButton(text);
-        button.setForeground(Color.WHITE);
-        button.setBackground(new Color(52, 58, 64));
+        
+        // 1. Text & Alignment Styling
+        button.setForeground(Color.BLACK); // Dark color for text legibility on light background
         button.setFocusPainted(false);
         button.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         button.setHorizontalAlignment(SwingConstants.LEFT);
-        button.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+        
+        // 2. Button Color (Resting State Background matches the main background)
+        button.setBackground(Color.WHITE); 
+        
+        // 3. Button Roundness (Arc Radius)
+        button.putClientProperty("JButton.arc", 40); 
+        
+        // 4. FIX: Button Borderline Color Configuration
+        // Do NOT use button.setBorder(). Let FlatLaf handle the border lines and pass inner margins like this instead:
+        button.putClientProperty("JButton.margin", new Insets(10, 15, 10, 15)); // Handles padding internally
+        button.putClientProperty("JButton.squareSize", false);
+        button.putClientProperty("JButton.borderColor", Color.BLACK); // Clean, solid black edge lines will now show up!
+        
+        // 5. Interaction / Hover Colors
+        button.putClientProperty("JButton.hoverBackground", Color.WHITE); 
+        button.putClientProperty("JButton.hoverBorderColor", Color.GRAY);  
+        button.putClientProperty("JButton.focusedBackground", new Color(245, 247, 250));
+        
         return button;
     }
 
@@ -128,9 +161,11 @@ public class MainDashboardView extends JFrame {
         return panel;
     }
 
-    // Optional main method to test this view independently
     public static void main(String[] args) {
+        // 1. Setup the Look and Feel FIRST
         FlatLightLaf.setup();
+        
+        // 2. ONLY THEN initialize your GUI views
         SwingUtilities.invokeLater(() -> {
             new MainDashboardView().setVisible(true);
         });
