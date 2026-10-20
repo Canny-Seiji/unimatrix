@@ -8,10 +8,16 @@ import java.util.List;
 
 public class ExamScheduleDAO {
 
-    // Fetch all generated exam schedules
+    // Fetch all generated exam schedules with joined descriptive names
     public List<ExamSchedule> getAllSchedules() {
         List<ExamSchedule> schedules = new ArrayList<>();
-        String query = "SELECT id, course_id, room_id, block_section_id, faculty_id, exam_date, time_slot FROM exam_schedules";
+        String query = "SELECT e.id, e.course_id, e.room_id, e.block_section_id, e.faculty_id, e.exam_date, e.time_slot, " +
+                       "c.course_code, r.room_name, b.section_name, f.faculty_name " +
+                       "FROM exam_schedules e " +
+                       "LEFT JOIN courses c ON e.course_id = c.id " +
+                       "LEFT JOIN rooms r ON e.room_id = r.id " +
+                       "LEFT JOIN block_sections b ON e.block_section_id = b.id " +
+                       "LEFT JOIN faculty f ON e.faculty_id = f.id";
 
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
@@ -28,7 +34,11 @@ public class ExamScheduleDAO {
                     rs.getInt("block_section_id"),
                     rs.getInt("faculty_id"),
                     examDate,
-                    rs.getString("time_slot")
+                    rs.getString("time_slot"),
+                    rs.getString("course_code"),
+                    rs.getString("room_name"),
+                    rs.getString("section_name"),
+                    rs.getString("faculty_name")
                 ));
             }
         } catch (SQLException e) {
@@ -49,7 +59,7 @@ public class ExamScheduleDAO {
             pstmt.setInt(2, schedule.getRoomId());
             pstmt.setInt(3, schedule.getBlockSectionId());
             pstmt.setInt(4, schedule.getFacultyId());
-            pstmt.setDate(5, Date.valueOf(schedule.getExamDate()));
+            pstmt.setDate(5, schedule.getExamDate() != null ? Date.valueOf(schedule.getExamDate()) : null);
             pstmt.setString(6, schedule.getTimeSlot());
 
             return pstmt.executeUpdate() > 0;

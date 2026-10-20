@@ -5,7 +5,9 @@ public enum Page {
     DASHBOARD("Dashboard"),
     MANAGE_DATA("Manage Data"),
     SCHEDULER("Scheduler"),
+    SCHEDULE_VIEWER("Schedule Viewer"),
     EXPORT("Export");
+    
 
     private final String title;
 

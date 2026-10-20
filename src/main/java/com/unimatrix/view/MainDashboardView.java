@@ -45,6 +45,7 @@ public class MainDashboardView extends JFrame {
                 case DASHBOARD: comp = home; break;
                 case MANAGE_DATA: comp = new ManageDataPanel(); break;
                 case SCHEDULER: comp = new SchedulerPanel(); break;
+                case SCHEDULE_VIEWER: comp = new ScheduleViewerPanel(); break;
                 case EXPORT: comp = new ExportPanel(); break;
                 default: comp = placeholder(p); break;
             }
