@@ -1,173 +1,137 @@
 package com.unimatrix.view;
 
-import com.formdev.flatlaf.FlatLightLaf;
+import com.unimatrix.view.components.SidebarButton;
+import com.unimatrix.view.theme.UniMatrixTheme;
 
 import javax.swing.*;
-import javax.swing.border.Border;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.util.EnumMap;
+import java.util.Map;
 
+/**
+ * Application shell: dark sidebar + header + CardLayout workspace.
+ * Other screens plug in through registerPage(); unregistered pages show a placeholder.
+ */
 public class MainDashboardView extends JFrame {
 
-    private JPanel contentPanel;
-    private CardLayout cardLayout;
+    private final CardLayout cardLayout = new CardLayout();
+    private final JPanel workspace = new JPanel(cardLayout);
+    private final JLabel pageTitle = UniMatrixTheme.title("Dashboard");
+    private final Map<Page, SidebarButton> navButtons = new EnumMap<>(Page.class);
+    private final Map<Page, JComponent> wrappers = new EnumMap<>(Page.class);
+    private final ButtonGroup navGroup = new ButtonGroup();
+    private final DashboardHomePanel home;
+    private final Runnable onLogout;
 
-    public MainDashboardView() {
-        setTitle("UniMatrix - Automated Exam Scheduling System");
-        setSize(1000, 650);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null); // Center on screen
+    public MainDashboardView(String username, DashboardDataProvider provider, Runnable onLogout) {
+        super("UniMatrix");
+        this.onLogout = onLogout;
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setMinimumSize(new Dimension(1000, 640));
+        setSize(1200, 760);
+        setLocationRelativeTo(null);
 
-        initUI();
+        home = new DashboardHomePanel(provider, this::navigateTo);
+
+        JPanel root = new JPanel(new BorderLayout());
+        root.add(buildSidebar(), BorderLayout.WEST);
+        root.add(buildMain(username), BorderLayout.CENTER);
+        setContentPane(root);
+
+        for (Page p : Page.values()) {
+            registerPage(p, p == Page.DASHBOARD ? home : placeholder(p));
+        }
+        navigateTo(Page.DASHBOARD);
     }
 
-    private void initUI() {
-        // Main layout using BorderLayout
-        setLayout(new BorderLayout());
-
-        // --- 1. Sidebar Container Setup ---
-        JPanel sidebarContainer = new JPanel(new BorderLayout());
-        sidebarContainer.setPreferredSize(new Dimension(200, getHeight()));
-        sidebarContainer.setBackground(Color.WHITE); 
-
-        // FIX: Changed side padding from 15 to 0 so buttons can touch the edges!
-        // Parameters: createEmptyBorder(top, left, bottom, right)
-        Border padding = BorderFactory.createEmptyBorder(20, 0, 20, 0); 
-        Border rightLine = BorderFactory.createMatteBorder(0, 0, 0, 1, Color.GRAY); 
-        sidebarContainer.setBorder(BorderFactory.createCompoundBorder(rightLine, padding));
-
-        // --- 2. Sidebar Navigation Panel ---
-        JPanel sidebarPanel = new JPanel();
-        sidebarPanel.setLayout(new GridLayout(0, 1, 0, 0)); 
-        sidebarPanel.setOpaque(false); 
-
-        // Brand / Title inside Sidebar
-        // FIX: Because we removed the panel margins, add a small left-margin directly 
-        // to the label border so the "UniMatrix" text doesn't look glued to the left screen edge.
-        JLabel brandLabel = new JLabel("UniMatrix", JLabel.LEFT);
-        brandLabel.setBorder(BorderFactory.createEmptyBorder(0, 15, 10, 0)); // Spacing just for the text title
-        brandLabel.setForeground(new Color(33, 37, 41)); 
-        brandLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        sidebarPanel.add(brandLabel);
-
-        // Navigation Buttons
-        JButton btnHome = createSidebarButton("Dashboard Home");
-        JButton btnManageData = createSidebarButton("Manage Data (CRUD)");
-        JButton btnScheduler = createSidebarButton("Scheduling Engine");
-        JButton btnViewer = createSidebarButton("View Timetable");
-        JButton btnExport = createSidebarButton("Export Reports");
-        JButton btnLogout = createSidebarButton("Logout");
-
-        // Add buttons to the layout panel
-        sidebarPanel.add(btnHome);
-        sidebarPanel.add(btnManageData);
-        sidebarPanel.add(btnScheduler);
-        sidebarPanel.add(btnViewer);
-        sidebarPanel.add(btnExport);
-        sidebarPanel.add(btnLogout);
-
-        // Anchor to the top and load into frame
-        sidebarContainer.add(sidebarPanel, BorderLayout.NORTH);
-        add(sidebarContainer, BorderLayout.WEST);
-
-        // --- 2. Dynamic Content Area (CardLayout) ---
-        cardLayout = new CardLayout();
-        contentPanel = new JPanel(cardLayout);
-
-        // Add views to cards
-        contentPanel.add(createHomePanel(), "HOME");
-        contentPanel.add(createPlaceholderPanel("Manage Rooms, Block Sections, Courses & Faculty (CRUD Phase)"), "MANAGE");
-        contentPanel.add(createPlaceholderPanel("Scheduling Engine Control Panel (Trigger & Monitor Algorithm)"), "SCHEDULER");
-        contentPanel.add(createPlaceholderPanel("Schedule Viewer JTable Grid & Filters"), "VIEWER");
-        contentPanel.add(createPlaceholderPanel("Export Timetable to PDF or CSV Options"), "EXPORT");
-
-        add(contentPanel, BorderLayout.CENTER);
-
-        // --- 3. Button Action Listeners ---
-        btnHome.addActionListener(e -> cardLayout.show(contentPanel, "HOME"));
-        btnManageData.addActionListener(e -> cardLayout.show(contentPanel, "MANAGE"));
-        btnScheduler.addActionListener(e -> cardLayout.show(contentPanel, "SCHEDULER"));
-        btnViewer.addActionListener(e -> cardLayout.show(contentPanel, "VIEWER"));
-        btnExport.addActionListener(e -> cardLayout.show(contentPanel, "EXPORT"));
-        
-        btnLogout.addActionListener(e -> {
-            int choice = JOptionPane.showConfirmDialog(this, "Are you sure you want to log out?", "Logout", JOptionPane.YES_NO_OPTION);
-            if (choice == JOptionPane.YES_OPTION) {
-                dispose();
-            }
-        });
+    /** Replaces the page (including the placeholder) with a real screen. */
+    public void registerPage(Page page, JComponent component) {
+        JComponent oldWrapper = wrappers.remove(page);
+        if (oldWrapper != null) workspace.remove(oldWrapper);
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.add(component, BorderLayout.CENTER);
+        wrappers.put(page, wrapper);
+        workspace.add(wrapper, page.name());
+        workspace.revalidate();
+        workspace.repaint();
     }
 
-    // Helper method to style sidebar buttons consistently
-    private JButton createSidebarButton(String text) {
-        JButton button = new JButton(text);
-        
-        // 1. Text & Alignment Styling
-        button.setForeground(Color.BLACK); // Dark color for text legibility on light background
-        button.setFocusPainted(false);
-        button.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        button.setHorizontalAlignment(SwingConstants.LEFT);
-        
-        // 2. Button Color (Resting State Background matches the main background)
-        button.setBackground(Color.WHITE); 
-        
-        // 3. Button Roundness (Arc Radius)
-        button.putClientProperty("JButton.arc", 40); 
-        
-        // 4. FIX: Button Borderline Color Configuration
-        // Do NOT use button.setBorder(). Let FlatLaf handle the border lines and pass inner margins like this instead:
-        button.putClientProperty("JButton.margin", new Insets(10, 15, 10, 15)); // Handles padding internally
-        button.putClientProperty("JButton.squareSize", false);
-        button.putClientProperty("JButton.borderColor", Color.BLACK); // Clean, solid black edge lines will now show up!
-        
-        // 5. Interaction / Hover Colors
-        button.putClientProperty("JButton.hoverBackground", Color.WHITE); 
-        button.putClientProperty("JButton.hoverBorderColor", Color.GRAY);  
-        button.putClientProperty("JButton.focusedBackground", new Color(245, 247, 250));
-        
-        return button;
+    public void navigateTo(Page page) {
+        navButtons.get(page).setSelected(true);
+        pageTitle.setText(page.title());
+        cardLayout.show(workspace, page.name());
+        if (page == Page.DASHBOARD) home.refresh();
     }
 
-    // Home / Dashboard Landing Panel
-    JPanel createHomePanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(new Color(245, 247, 250));
-        
-        JLabel welcomeLabel = new JLabel("Welcome to UniMatrix Scheduling Dashboard", JLabel.CENTER);
-        welcomeLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        welcomeLabel.setForeground(new Color(33, 37, 41));
+    private JPanel buildSidebar() {
+        JPanel sidebar = new JPanel(new BorderLayout());
+        sidebar.setBackground(UniMatrixTheme.SIDEBAR_BG);
+        sidebar.setPreferredSize(new Dimension(230, 0));
+        sidebar.setBorder(new EmptyBorder(24, 15, 20, 15));
 
-        JLabel subLabel = new JLabel("Select an option from the sidebar to manage data, run algorithms, or view reports.", JLabel.CENTER);
-        subLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        subLabel.setForeground(new Color(108, 117, 125));
+        JLabel brand = new JLabel("UniMatrix");
+        brand.setFont(UniMatrixTheme.font(Font.BOLD, 20f));
+        brand.setForeground(Color.WHITE);
+        brand.setBorder(new EmptyBorder(0, 16, 24, 0));
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0; gbc.gridy = 0; gbc.insets = new Insets(0, 0, 10, 0);
-        panel.add(welcomeLabel, gbc);
+        JPanel nav = new JPanel();
+        nav.setOpaque(false);
+        nav.setLayout(new BoxLayout(nav, BoxLayout.Y_AXIS));
+        for (Page p : Page.values()) {
+            SidebarButton b = new SidebarButton(p.title());
+            b.addActionListener(e -> navigateTo(p));
+            navGroup.add(b);
+            navButtons.put(p, b);
+            nav.add(b);
+            nav.add(Box.createVerticalStrut(4));
+        }
 
-        gbc.gridy = 1; gbc.insets = new Insets(0, 0, 0, 0);
-        panel.add(subLabel, gbc);
+        SidebarButton logout = new SidebarButton("Log out");
+        logout.addActionListener(e -> { logout.setSelected(false); confirmLogout(); });
 
-        return panel;
+        sidebar.add(brand, BorderLayout.NORTH);
+        sidebar.add(nav, BorderLayout.CENTER);
+        sidebar.add(logout, BorderLayout.SOUTH);
+        return sidebar;
     }
 
-    // Reusable placeholder panel for modules yet to be built
-    private JPanel createPlaceholderPanel(String message) {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(new Color(245, 247, 250));
-        JLabel label = new JLabel(message, JLabel.CENTER);
-        label.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        label.setForeground(new Color(73, 80, 87));
-        panel.add(label);
-        return panel;
+    private void confirmLogout() {
+        int choice = JOptionPane.showConfirmDialog(this, "Log out of UniMatrix?", "Log out",
+                JOptionPane.YES_NO_OPTION);
+        if (choice == JOptionPane.YES_OPTION) {
+            dispose();
+            if (onLogout != null) onLogout.run();
+        }
     }
 
-    public static void main(String[] args) {
-        // 1. Setup the Look and Feel FIRST
-        FlatLightLaf.setup();
-        
-        // 2. ONLY THEN initialize your GUI views
-        SwingUtilities.invokeLater(() -> {
-            new MainDashboardView().setVisible(true);
-        });
+    private JPanel buildMain(String username) {
+        JPanel main = new JPanel(new BorderLayout());
+        main.setBackground(UniMatrixTheme.CONTENT_BG);
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(UniMatrixTheme.SURFACE);
+        header.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, UniMatrixTheme.BORDER),
+                new EmptyBorder(16, UniMatrixTheme.PAD, 16, UniMatrixTheme.PAD)));
+        JLabel user = UniMatrixTheme.muted("Signed in as " + username);
+        header.add(pageTitle, BorderLayout.WEST);
+        header.add(user, BorderLayout.EAST);
+
+        workspace.setOpaque(false);
+        workspace.setBorder(new EmptyBorder(UniMatrixTheme.PAD, UniMatrixTheme.PAD,
+                UniMatrixTheme.PAD, UniMatrixTheme.PAD));
+
+        main.add(header, BorderLayout.NORTH);
+        main.add(workspace, BorderLayout.CENTER);
+        return main;
+    }
+
+    private JComponent placeholder(Page page) {
+        JPanel p = new JPanel(new GridBagLayout());
+        p.setOpaque(false);
+        p.add(UniMatrixTheme.muted(page.title() + " — not built yet"));
+        return p;
     }
 }
