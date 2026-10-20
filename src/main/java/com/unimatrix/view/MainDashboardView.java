@@ -40,8 +40,17 @@ public class MainDashboardView extends JFrame {
         setContentPane(root);
 
         for (Page p : Page.values()) {
-            registerPage(p, p == Page.DASHBOARD ? home : placeholder(p));
+            JComponent comp;
+            switch (p) {
+                case DASHBOARD: comp = home; break;
+                case MANAGE_DATA: comp = new ManageDataPanel(); break;
+                case SCHEDULER: comp = new SchedulerPanel(); break;
+                case EXPORT: comp = new ExportPanel(); break;
+                default: comp = placeholder(p); break;
+            }
+            registerPage(p, comp);
         }
+
         navigateTo(Page.DASHBOARD);
     }
 
