@@ -46,7 +46,7 @@ public class DashboardHomePanel extends JPanel {
         heading.setFont(UniMatrixTheme.font(Font.BOLD, 15f));
 
         JButton generate = UniMatrixTheme.primaryButton("Generate schedule");
-        generate.addActionListener(e -> navigator.accept(Page.SCHEDULER));
+        generate.addActionListener(e -> navigator.accept(Page.MANAGE_SCHEDULES)); // Updated reference
         JButton manage = UniMatrixTheme.secondaryButton("Manage data");
         manage.addActionListener(e -> navigator.accept(Page.MANAGE_DATA));
         JButton export = UniMatrixTheme.secondaryButton("Export timetable");
