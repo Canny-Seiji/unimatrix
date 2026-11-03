@@ -7,11 +7,9 @@ import java.util.List;
 
 public class FacultyDAO {
 
-    // Fetch all faculty members from the database
     public List<Faculty> getAllFaculty() {
         List<Faculty> facultyList = new ArrayList<>();
-        // Ensure this column matches your actual MySQL database column name
-        String query = "SELECT id, faculty_name, department FROM faculty";
+        String query = "SELECT id, full_name, department FROM faculty";
 
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
@@ -20,7 +18,7 @@ public class FacultyDAO {
             while (rs.next()) {
                 facultyList.add(new Faculty(
                     rs.getInt("id"),
-                    rs.getString("faculty_name"),
+                    rs.getString("full_name"),
                     rs.getString("department")
                 ));
             }
@@ -31,10 +29,8 @@ public class FacultyDAO {
         return facultyList;
     }
 
-    // Add a new faculty member
     public boolean addFaculty(Faculty faculty) {
-        // Must match the column name used in the SELECT query above
-        String query = "INSERT INTO faculty (faculty_name, department) VALUES (?, ?)";
+        String query = "INSERT INTO faculty (full_name, department) VALUES (?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {

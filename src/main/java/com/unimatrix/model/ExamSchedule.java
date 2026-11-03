@@ -11,6 +11,9 @@ public class ExamSchedule {
     private LocalDate examDate;
     private String timeSlot;
 
+    // Which schedule file owns this row (0 = none / not yet assigned)
+    private int scheduleId;
+
     // Descriptive string fields for view rendering
     private String courseCode;
     private String roomName;
@@ -59,6 +62,9 @@ public class ExamSchedule {
 
     public String getTimeSlot() { return timeSlot; }
     public void setTimeSlot(String timeSlot) { this.timeSlot = timeSlot; }
+
+    public int getScheduleId() { return scheduleId; }
+    public void setScheduleId(int scheduleId) { this.scheduleId = scheduleId; }
 
     // Getters and Setters for descriptive UI fields
     public String getCourseCode() { return courseCode; }

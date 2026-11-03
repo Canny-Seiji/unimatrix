@@ -10,20 +10,14 @@ public class DatabaseConnection {
     private static final String USER = "root"; // Change to your MySQL username
     private static final String PASSWORD = "admin123"; // Change to your MySQL password
 
-    public static Connection getConnection() {
-        try {
-            Connection connection = DriverManager.getConnection(URL, USER, PASSWORD);
-            System.out.println("Successfully connected to the UniMatrix MySQL database!");
-            return connection;
-        } catch (SQLException e) {
-            System.err.println("Database connection failed!");
-            e.printStackTrace();
-            return null;
-        }
+    public static Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 
     // Quick main method to test the connection directly
-    public static void main(String[] args) {
-        getConnection();
+    public static void main(String[] args) throws SQLException {
+        try (Connection connection = getConnection()) {
+            System.out.println("Successfully connected to the UniMatrix MySQL database!");
+        }
     }
 }
