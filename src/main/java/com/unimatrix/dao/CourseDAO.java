@@ -24,7 +24,7 @@ public class CourseDAO {
                 ));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new IllegalStateException("Could not read courses: " + e.getMessage(),e);
         }
         return courses;
     }
@@ -41,8 +41,7 @@ public class CourseDAO {
 
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
+            throw new IllegalStateException("Could not save course: " + e.getMessage(),e);
         }
     }
 }

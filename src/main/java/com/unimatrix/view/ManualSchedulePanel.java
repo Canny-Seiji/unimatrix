@@ -25,22 +25,12 @@ public class ManualSchedulePanel extends JPanel {
     private int scheduleId; private Integer folderId; private long revision; private boolean dirty,loading;
     private final JButton save=new JButton("Save Schedule"),saveAs=new JButton("Save As New");
     private final DefaultTableModel model=new DefaultTableModel(new String[]{"Course","Room","Block Section","Faculty","Exam Date","Start Time","End Time"},0) {
-        public boolean isCellEditable(int r,int c){return c<6;}
-        public Object getValueAt(int r,int c) {
-            if(c!=6)return super.getValueAt(r,c);
-            if(catalog==null)return "";
-            try {
-                Choice choice=(Choice)super.getValueAt(r,0);
-                Course course=catalog.courses().stream().filter(x->choice!=null&&x.getId()==choice.id()).findFirst().orElse(null);
-                if(course==null)return "";
-                return ExamTimes.end(ExamTimes.parse(Objects.toString(super.getValueAt(r,5),"")),course.getDurationHours()).toString();
-            }catch(RuntimeException ex){return "";}
-        }
+        public boolean isCellEditable(int r,int c){return true;}
     };
     private final JTable table=new JTable(model) {
         public Component prepareRenderer(TableCellRenderer r,int row,int col) {
             Component c=super.prepareRenderer(r,row,col);
-            if(!isRowSelected(row))c.setBackground(invalid.contains(convertRowIndexToModel(row))?new Color(255,225,225):col==6?new Color(240,243,248):Color.WHITE);
+            if(!isRowSelected(row))c.setBackground(invalid.contains(convertRowIndexToModel(row))?new Color(255,225,225):PlannerControls.stripe(row));
             return c;
         }
     };
@@ -58,7 +48,10 @@ public class ManualSchedulePanel extends JPanel {
         clear.addActionListener(e->clearFilters());top.add(filterBar);
         JPanel searchBar=BackgroundTask.bar();field(searchBar,"Search all columns",search);searchBar.add(filter);searchBar.add(find);searchBar.add(clear);top.add(searchBar);
         top.add(new JLabel("Date: YYYY-MM-DD. Start: HH:mm (24-hour) or h:mm AM/PM."));
-        top.add(new JLabel("End follows course duration. Exams must finish the same day; Monday-Saturday."));
+        top.add(new JLabel("Choose start and end times. Monday-Saturday; 7 AM-9 PM."));
+        PlannerControls.calendar(table,4);
+        table.getColumnModel().getColumn(5).setCellEditor(PlannerControls.timeEditor());
+        table.getColumnModel().getColumn(6).setCellEditor(PlannerControls.timeEditor());
         table.setRowHeight(32);table.setRowSorter(sorter);table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);table.putClientProperty("terminateEditOnFocusLost",true);
         int[] widths={240,190,160,200,130,120,120};for(int i=0;i<widths.length;i++)table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         JPanel bottom=BackgroundTask.bar();JButton add=new JButton("+"),delete=new JButton("Delete Record"),reload=new JButton("Refresh Choices");
@@ -117,12 +110,12 @@ public class ManualSchedulePanel extends JPanel {
         loading=true;scheduleId=d.id();folderId=d.folderId();revision=d.revision();name.setText(d.name());period.setSelectedItem(d.period());year.setText(d.academicYear());semester.setText(d.semester());
         location.setText("Schedule #"+d.id());model.setRowCount(0);
         for(ExamSchedule e:d.exams()) {
-            String start="";try{start=ExamTimes.interval(e.getTimeSlot())[0].toString();}catch(RuntimeException ignored){ }
-            model.addRow(new Object[]{choice(0,e.getCourseId(),e.getCourseCode()),choice(1,e.getRoomId(),e.getRoomName()),choice(2,e.getBlockSectionId(),e.getBlockSection()),choice(3,e.getFacultyId(),e.getFacultyName()),e.getExamDate()==null?"":e.getExamDate().toString(),start,null});
+            String start="",end="";try{var times=ExamTimes.interval(e.getTimeSlot());start=times[0].format(java.time.format.DateTimeFormatter.ofPattern("h:mm a",java.util.Locale.ENGLISH));end=times[1].format(java.time.format.DateTimeFormatter.ofPattern("h:mm a",java.util.Locale.ENGLISH));}catch(RuntimeException ignored){ }
+            model.addRow(new Object[]{choice(0,e.getCourseId(),e.getCourseCode()),choice(1,e.getRoomId(),e.getRoomName()),choice(2,e.getBlockSectionId(),e.getBlockSection()),choice(3,e.getFacultyId(),e.getFacultyName()),e.getExamDate()==null?"":e.getExamDate().toString(),start,end});
         }
         model.addRow(new Object[7]);model.addRow(new Object[7]);clearFilters();loading=false;dirty=false;putClientProperty("dirty",false);invalid.clear();save.setText("Save Changes");saveAs.setEnabled(true);status.setText(d.exams().size()+" exams loaded.");
     }
-    private boolean blank(int r) {for(int c=0;c<6;c++){Object v=model.getValueAt(r,c);if(v!=null&&!v.toString().isBlank())return false;}return true;}
+    private boolean blank(int r) {for(int c=0;c<7;c++){Object v=model.getValueAt(r,c);if(v!=null&&!v.toString().isBlank())return false;}return true;}
     private void clearFilters(){search.setText("");for(var f:filters)if(f.getItemCount()>0)f.setSelectedIndex(0);sorter.setRowFilter(null);}
     private void applyFilter() {
         if(!BackgroundTask.finishEdit(table))return;
@@ -145,7 +138,7 @@ public class ManualSchedulePanel extends JPanel {
                 LocalDate date=LocalDate.parse(Objects.toString(model.getValueAt(r,4),"").trim());
                 LocalTime start=ExamTimes.parse(Objects.toString(model.getValueAt(r,5),""));
                 int courseId=choices[0].id();Course course=catalog.courses().stream().filter(x->x.getId()==courseId).findFirst().orElseThrow(()->new IllegalArgumentException("Course no longer exists."));
-                exams.add(new ExamSchedule(0,courseId,choices[1].id(),choices[2].id(),choices[3].id(),date,ExamTimes.slot(start,ExamTimes.end(start,course.getDurationHours()))));sourceRows.add(r);
+                exams.add(new ExamSchedule(0,courseId,choices[1].id(),choices[2].id(),choices[3].id(),date,ExamTimes.slot(start,ExamTimes.parse(Objects.toString(model.getValueAt(r,6),"")))));sourceRows.add(r);
             }catch(RuntimeException ex){invalid.add(r);errors.add("Row "+(r+1)+": "+ex.getMessage());}
         }
         if(errors.isEmpty())try{ScheduleEditorService.validate(exams,catalog);}catch(IllegalArgumentException ex){

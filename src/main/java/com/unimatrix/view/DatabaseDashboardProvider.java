@@ -21,8 +21,8 @@ public class DatabaseDashboardProvider implements DashboardDataProvider {
         List<ExamSchedule> schedules = scheduleDAO.getAllSchedules();
         String lastSummary = null;
         if (!schedules.isEmpty()) {
-            lastSummary = "Generated " + schedules.size() + " slots successfully. Latest date: " 
-                        + schedules.get(schedules.size() - 1).getExamDate();
+            var latest = schedules.stream().map(ExamSchedule::getExamDate).filter(java.util.Objects::nonNull).max(java.time.LocalDate::compareTo).orElse(null);
+            lastSummary = schedules.size() + " saved exams. Latest examination date: " + latest;
         }
 
         return new DashboardStats(roomsCount, blocksCount, facultyCount, coursesCount, lastSummary);

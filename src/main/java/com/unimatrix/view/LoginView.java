@@ -82,9 +82,10 @@ public class LoginView extends JFrame {
         String password = new String(passField.getPassword()).trim();
 
         if (username.equals("admin") && password.equals("unimatrix123")) {
-            dispose();
-            DashboardDataProvider provider = new DatabaseDashboardProvider();
-            new MainDashboardView(username, provider, () -> new LoginView().setVisible(true)).setVisible(true);
+            BackgroundTask.run((JComponent)getContentPane(), () -> { com.unimatrix.dao.SchemaCompatibility.check(); return true; }, ok -> {
+                dispose();
+                new MainDashboardView(username,new DatabaseDashboardProvider(),()->new LoginView().setVisible(true)).setVisible(true);
+            });
         } else {
             JOptionPane.showMessageDialog(this, "Invalid credentials. Try admin / unimatrix123", "Access Denied", JOptionPane.ERROR_MESSAGE);
         }

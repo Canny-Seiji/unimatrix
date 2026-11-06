@@ -30,7 +30,7 @@ public class ManageDataPanel extends JPanel {
             table=new JTable(model) {
                 public Component prepareRenderer(TableCellRenderer r,int row,int column) {
                     Component c=super.prepareRenderer(r,row,column);
-                    if(!isRowSelected(row)) c.setBackground(invalid.contains(convertRowIndexToModel(row))?new Color(255,225,225):Color.WHITE);
+                    if(!isRowSelected(row)) c.setBackground(invalid.contains(convertRowIndexToModel(row))?new Color(255,225,225):PlannerControls.stripe(row));
                     return c;
                 }
             };
@@ -47,6 +47,8 @@ public class ManageDataPanel extends JPanel {
             save.addActionListener(e->save());
             reload.addActionListener(e->{if(!dirty||JOptionPane.showConfirmDialog(this,"Discard unsaved changes and reload?","Reload",JOptionPane.YES_NO_OPTION)==JOptionPane.YES_OPTION)reload();});
             JPanel actions=BackgroundTask.bar();actions.add(add);actions.add(delete);actions.add(save);actions.add(reload);actions.add(status);
+            JPanel searchBar=BackgroundTask.bar();JTextField search=new JTextField(22);JButton find=new JButton("Search"),clear=new JButton("Clear Search");searchBar.add(search);searchBar.add(find);searchBar.add(clear);
+            Runnable filter=()->{if(BackgroundTask.finishEdit(table))((TableRowSorter<?>)table.getRowSorter()).setRowFilter(search.getText().isBlank()?null:RowFilter.orFilter(java.util.List.of(RowFilter.regexFilter("(?i)"+java.util.regex.Pattern.quote(search.getText().trim())),new RowFilter<Object,Integer>(){public boolean include(Entry<? extends Object,? extends Integer> entry){for(int c=0;c<entry.getValueCount();c++)if(!entry.getStringValue(c).isBlank())return false;return true;}})));};find.addActionListener(e->filter.run());search.addActionListener(e->filter.run());clear.addActionListener(e->{search.setText("");filter.run();});add(searchBar,BorderLayout.NORTH);
             add(new JScrollPane(table),BorderLayout.CENTER);add(actions,BorderLayout.SOUTH);
             SwingUtilities.invokeLater(this::reload);
         }

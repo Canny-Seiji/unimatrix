@@ -20,20 +20,27 @@ public final class MySqlIntegrationChecks {
         System.setProperty("unimatrix.db.password",System.getenv().getOrDefault("UNIMATRIX_TEST_DB_PASSWORD",""));
         try(Connection c=DatabaseConnection.getConnection();Statement s=c.createStatement()) {
             try(ResultSet r=s.executeQuery("SHOW TABLES")){if(r.next())throw new IllegalStateException("Test database must be empty. No tables were changed.");}
-            script(s,Path.of("database/test_schema.sql"));script(s,Path.of("database/002_schedule_editor.sql"));
+            script(s,Path.of("database/test_schema.sql"));script(s,Path.of("database/002_schedule_editor.sql"));script(s,Path.of("database/003_planning.sql"));
             s.executeUpdate("INSERT INTO rooms(room_name,building,capacity) VALUES ('R1','A',40),('R2','A',80)");
             s.executeUpdate("INSERT INTO courses(course_code,course_title,duration_hours) VALUES ('CS1','OOP',1.5),('CS2','Databases',2),('CS3','Networks',1.5)");
             s.executeUpdate("INSERT INTO block_sections(section_name,student_count) VALUES ('BSCS 1A',30),('BSCS 1B',50)");
         }
         check(new FacultyDAO().addFaculty(new Faculty(0,"José Test","Computing")),"faculty insert uses actual column");
         check(new FacultyDAO().getAllFaculty().size()==1,"faculty read alias");
+        try(Connection c=DatabaseConnection.getConnection();Statement s=c.createStatement()){s.executeUpdate("INSERT INTO faculty_availability(faculty_id,weekday,start_time,end_time) VALUES(1,6,'07:00','21:00')");}
+        SchemaCompatibility.check();
         ScheduleEditorService service=new ScheduleEditorService();
         ScheduleDocument saved=service.save(document(0,0,"Midterms",List.of(exam(1,"08:00 - 09:30"),exam(2,"09:30 - 11:30"))),true);
         check(service.load(saved.id()).exams().get(0).getFacultyName().equals("José Test"),"faculty joined read");
-        ScheduleDocument finals=service.save(document(0,0,"Finals",saved.exams()),true);check(finals.id()!=saved.id(),"separate-file duplicate allowed");
+        ScheduleDocument finals=service.save(document(0,0,"Finals",saved.exams()),true);check(finals.id()!=saved.id(),"separate-file draft duplicate allowed");
+        ScheduleHistory.publication(saved.id(),true,saved.revision());
+        reject(()->ScheduleHistory.publication(finals.id(),true,finals.revision()),"published cross-file conflict rejected");
+        ScheduleDocument currentPublished=service.load(saved.id());
+        ScheduleHistory.publication(saved.id(),false,currentPublished.revision());
+        saved=service.load(saved.id());
         ScheduleDocument edited=service.save(document(saved.id(),saved.revision(),"Midterms",List.of(exam(1,"08:00 - 09:30"))),false);
         check(service.load(saved.id()).exams().size()==1,"save removes deleted rows");
-        reject(()->service.save(saved,false),"stale revision rejected");
+        ScheduleDocument stale=saved;reject(()->service.save(stale,false),"stale revision rejected");
         reject(()->service.save(document(0,0,"Duplicates",List.of(exam(1,"08:00 - 09:30"),exam(1,"12:00 - 13:30"))),true),"duplicate rejected");
         // Force a failure after file creation and before the exam batch can commit.
         int count=count("schedule_files");
@@ -53,6 +60,23 @@ public final class MySqlIntegrationChecks {
         Future<Boolean> first=pool.submit(append),second=pool.submit(append);start.countDown();
         try{check(first.get(30,TimeUnit.SECONDS)^second.get(30,TimeUnit.SECONDS),"exactly one concurrent duplicate append succeeds");}finally{pool.shutdownNow();}
         check(service.load(edited.id()).exams().size()==2,"concurrent append committed once");
+        ScheduleDocument beforeRestore=service.load(edited.id());
+        var history=ScheduleHistory.list(edited.id());check(!history.isEmpty(),"history captured");
+        ScheduleHistory.restore(edited.id(),history.get(0).id(),beforeRestore.revision());
+        check(service.load(edited.id()).revision()>beforeRestore.revision(),"restore advances revision");
+        ScheduleFolder folder=new ScheduleFolderDAO().createFolder(null,"Recover me");
+        WorkspaceService.trash(folder.getId(),true);
+        try {new ScheduleFolderDAO().createFolder(folder.getId(),"Hidden child");throw new AssertionError("deleted parent accepted");}
+        catch(IllegalStateException expected){checks++;}
+        WorkspaceService.trash(finals.id(),false);
+        var courses=entities.load(EntityDataDAO.Kind.COURSE);
+        var renamedCourses=new ArrayList<>(courses);renamedCourses.set(0,new EntityDataDAO.Row(1,List.of("CS1","Object-oriented programming")));
+        entities.save(EntityDataDAO.Kind.COURSE,courses,renamedCourses);
+        check(entities.load(EntityDataDAO.Kind.COURSE).get(0).values().get(1).equals("Object-oriented programming"),"master edit with trashed references succeeds");
+        var deletedFolder=WorkspaceService.items(true).stream().filter(x->x.folder()&&x.id()==folder.getId()).findFirst().orElseThrow();
+        WorkspaceService.recover(deletedFolder);check(WorkspaceService.items(false).stream().anyMatch(x->x.folder()&&x.id()==folder.getId()),"folder recovered");
+        WorkspaceService.renameMove(new WorkspaceService.Item(folder.getId(),true,null,"Recover me"),"Renamed",null);
+        reject(()->WorkspaceService.renameMove(new WorkspaceService.Item(folder.getId(),true,null,"Renamed"),"Renamed",folder.getId()),"folder cycle rejected");
         System.out.println("MySQL integration checks passed: "+checks);
     }
     private static ScheduleDocument document(int id,long revision,String name,List<ExamSchedule> rows){return new ScheduleDocument(id,null,name,"Midterms","2026-2027","First",revision,rows);}

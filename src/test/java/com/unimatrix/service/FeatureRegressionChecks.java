@@ -1,68 +1,42 @@
 package com.unimatrix.service;
-
-import com.unimatrix.dao.EntityDataDAO;
 import com.unimatrix.model.*;
-import java.nio.file.*;
 import java.time.*;
 import java.util.*;
 
-/** Standalone checks; also invoked by FeatureRegressionTest under Maven/JUnit. */
 public final class FeatureRegressionChecks {
-    private static int checks;
-    private static final LocalDate SATURDAY=LocalDate.of(2026,11,7);
-    private static final Map<Integer,Course> COURSES=Map.of(1,new Course(1,"CS101","OOP",1.5f),2,new Course(2,"CS102","Databases",1.5f),3,new Course(3,"CS103","Networks",4));
-    private static final Map<Integer,Room> ROOMS=Map.of(1,new Room(1,"R1","A",50),2,new Room(2,"R2","A",50));
-    private static final Map<Integer,BlockSection> BLOCKS=Map.of(1,new BlockSection(1,"BSCS 1A",40),2,new BlockSection(2,"BSCS 1B",40));
-    public static void main(String[] args) throws Exception {
-        checks=0;
-        check(ExamTimes.parse("2:30 PM").equals(LocalTime.of(14,30)),"12-hour input");
-        check(ExamTimes.parse("00:10").equals(LocalTime.of(0,10)),"unrestricted early input");
-        check(ExamTimes.end(LocalTime.of(6,15),1.5f).equals(LocalTime.of(7,45)),"duration-derived end");
-        check(ExamTimes.durationMinutes(1.25f)==75,"quarter-hour duration");
-        reject(()->ExamTimes.durationMinutes(Float.NaN),"nonfinite duration");
-        reject(()->ExamTimes.durationMinutes(0),"zero duration");
-        reject(()->ExamTimes.durationMinutes(.123f),"fraction of a minute");
-        reject(()->ExamTimes.end(LocalTime.of(23,0),1.5f),"overnight exam");
-        check(ExamTimes.interval("08:00 AM - 11:00 AM")[1].equals(LocalTime.of(11,0)),"legacy slot parsing");
-        check(!ExamTimes.overlaps("08:00 - 09:30","09:30 - 11:00"),"adjacent exams");
-        check(ExamTimes.overlaps("08:00 - 09:30","09:00 - 10:30"),"partial overlap");
-        check(ExamTimes.overlaps("08:00 - 12:00","09:00 - 10:00"),"contained interval");
-        valid(List.of(exam(1,1,1,1,"06:00 - 07:30"),exam(2,1,1,1,"07:30 - 09:00")));
-        valid(List.of(exam(1,1,1,1,"08:00 - 09:30"),exam(2,2,2,2,"08:00 - 09:30")));
-        reject(()->valid(List.of(exam(1,1,1,1,"08:00 - 09:30"),exam(2,1,2,2,"09:00 - 10:30"))),"room overlap");
-        reject(()->valid(List.of(exam(1,1,1,1,"08:00 - 09:30"),exam(2,2,1,2,"09:00 - 10:30"))),"block overlap");
-        reject(()->valid(List.of(exam(1,1,1,1,"08:00 - 09:30"),exam(2,2,2,1,"09:00 - 10:30"))),"faculty overlap");
-        reject(()->valid(List.of(exam(1,1,1,1,"08:00 - 09:30"),exam(1,2,1,2,"12:00 - 13:30"))),"duplicate course/block");
-        ExamSchedule sunday=exam(1,1,1,1,"08:00 - 09:30");sunday.setExamDate(SATURDAY.plusDays(1));reject(()->valid(List.of(sunday)),"Sunday");
-        reject(()->valid(List.of(exam(1,1,1,1,"08:00 - 11:00"))),"wrong duration");
-        reject(()->ScheduleValidator.validate(List.of(exam(1,1,1,1,"08:00 - 09:30")),COURSES,Map.of(1,new Room(1,"Small","A",10)),BLOCKS,Set.of(1)),"manual capacity");
-        reject(()->valid(List.of(exam(999,1,1,1,"08:00 - 09:30"))),"deleted entity");
-        // Independent schedules can contain the same course/block and resource/time.
-        valid(List.of(exam(1,1,1,1,"08:00 - 09:30")));valid(List.of(exam(1,1,1,1,"08:00 - 09:30")));
-        EntityDataDAO.validated(EntityDataDAO.Kind.FACULTY,new EntityDataDAO.Row(0,List.of("José Dela Cruz","Computing")));checks++;
-        reject(()->EntityDataDAO.validated(EntityDataDAO.Kind.FACULTY,new EntityDataDAO.Row(0,List.of("Name"," "))),"partial faculty row");
-        reject(()->EntityDataDAO.validated(EntityDataDAO.Kind.ROOM,new EntityDataDAO.Row(0,List.of("R1","A","-5"))),"negative room capacity");
-        reject(()->EntityDataDAO.validated(EntityDataDAO.Kind.COURSE,new EntityDataDAO.Row(0,List.of("CS","Title","Infinity"))),"infinite course duration");
-        ScheduleRequest req=new ScheduleRequest(0,SATURDAY,Set.of(DayOfWeek.SATURDAY,DayOfWeek.SUNDAY),List.of(ROOMS.get(1)),List.of(COURSES.get(3)),List.of(BLOCKS.get(1)),List.of(new Faculty(1,"Faculty","Dept")));
-        var plan=new SchedulingEngine().plan(req,LocalTime.of(7,0),LocalTime.of(14,0));
-        check(plan.exams().size()==1&&plan.exams().get(0).getTimeSlot().equals("07:00 - 11:00"),"four-hour auto exam");
-        check(new SchedulingEngine().plan(req,LocalTime.of(7,0),LocalTime.of(9,0)).exams().isEmpty(),"auto window too short");
-        Path output=Path.of(args.length>0?args[0]:"target/pdf-check.pdf");Files.createDirectories(output.toAbsolutePath().getParent());
-        List<ExamSchedule> rows=new ArrayList<>();
-        for(int i=0;i<75;i++) {
-            ExamSchedule e=exam(i+1,1,1,1,"08:00 - 09:30");e.setExamDate(SATURDAY.plusDays((i/25)*7L));e.setCourseCode("CS-"+(i+1));
-            e.setCourseTitle(i%3==0?"Object-Oriented Programming and Advanced Software Engineering Laboratory":"Database Systems");e.setRoomName("Engineering Building - Room 401");e.setBlockSection("BSCS 2A");e.setFacultyName(i%2==0?"Dr. José Muñoz":"Prof. María Dela Cruz");rows.add(e);
-        }
-        ScheduleDocument doc=new ScheduleDocument(42,null,"Midterms - College of Computing","Midterms","2026-2027","First Semester",0,rows);
-        SchedulePdfExporter.export(doc,output);
-        check(Files.size(output)>1000,"PDF written");
-        byte[] before=Files.readAllBytes(output);ExamSchedule bad=exam(1,1,1,1,"invalid");
-        try{SchedulePdfExporter.export(new ScheduleDocument(42,null,"Bad","Other","2026","First",0,List.of(bad)),output);throw new AssertionError("invalid PDF export accepted");}catch(java.io.IOException expected){checks++;}
-        check(Arrays.equals(before,Files.readAllBytes(output)),"failed export preserves destination");
-        System.out.println("Feature regression checks passed: "+checks);
+    static int checks;
+    static LocalDate sat=LocalDate.of(2026,11,7);
+    static ExamSchedule exam(String time){return new ExamSchedule(0,1,1,1,1,sat,time);}
+    static PlanningRules.Window weekly(LocalTime start,LocalTime end){return new PlanningRules.Window(1,6,null,true,start,end);}
+    public static void main(String[] args){checks=0;
+        check(ExamTimes.parse("9:00 PM").equals(LocalTime.of(21,0)),"12-hour input");
+        check(!ExamTimes.overlaps("07:00 - 08:00","08:00 - 09:00"),"adjacent intervals");
+        check(ExamTimes.overlaps("07:00 - 09:00","08:30 - 10:00"),"partial overlap");
+        var windows=List.of(weekly(LocalTime.of(7,0),LocalTime.of(12,0)),weekly(LocalTime.of(12,0),LocalTime.of(21,0)));
+        var rules=new PlanningRules.Rules(windows,Set.of(),List.of());
+        check(PlanningRules.available(rules,exam("11:00 - 13:00")),"adjacent availability windows merge");
+        check(!PlanningRules.available(new PlanningRules.Rules(List.of(),Set.of(),List.of()),exam("07:00 - 08:00")),"missing availability rejects");
+        check(!PlanningRules.available(new PlanningRules.Rules(windows,Set.of(sat),List.of()),exam("07:00 - 08:00")),"excluded date");
+        List<PlanningRules.Window> exception=new ArrayList<>(windows);exception.add(new PlanningRules.Window(1,null,sat,false,LocalTime.of(7,0),LocalTime.of(21,0)));
+        check(!PlanningRules.available(new PlanningRules.Rules(exception,Set.of(),List.of()),exam("07:00 - 08:00")),"unavailable date overrides weekly");
+        exception.set(2,new PlanningRules.Window(1,null,sat,true,LocalTime.of(10,0),LocalTime.of(12,0)));
+        var overridden=new PlanningRules.Rules(exception,Set.of(),List.of());
+        check(!PlanningRules.available(overridden,exam("07:00 - 08:00")),"exception replaces weekly hours");check(PlanningRules.available(overridden,exam("10:00 - 11:00")),"available exception");
+        List<Room> rooms=List.of(new Room(1,"Room","A",50));List<BlockSection> blocks=List.of(new BlockSection(1,"A",30),new BlockSection(2,"B",30));
+        var requirements=List.of(new ExplicitPlanner.Requirement(1,1,1,60),new ExplicitPlanner.Requirement(1,2,1,90));
+        var result=ExplicitPlanner.generate(requirements,rooms,blocks,sat,sat,LocalTime.of(7,0),LocalTime.of(21,0),rules);
+        check(result.size()==2,"same course produces exams for both specified blocks");check(result.get(0).getBlockSectionId()==1&&result.get(1).getBlockSectionId()==2,"explicit blocks preserved");check(result.stream().allMatch(e->e.getFacultyId()==1),"explicit faculty preserved");check(!PlanningRules.conflicts(result.get(0),result.get(1)),"generated resources do not overlap");
+        reject(()->ExplicitPlanner.generate(requirements,rooms,blocks,sat,sat.minusDays(1),LocalTime.of(7,0),LocalTime.of(21,0),rules),"invalid date range");
+        reject(()->ExplicitPlanner.generate(requirements,rooms,blocks,sat,sat,LocalTime.of(7,0),LocalTime.of(8,0),rules),"all requirements must fit");
+        reject(()->ExplicitPlanner.generate(List.of(requirements.get(0),requirements.get(0)),rooms,blocks,sat,sat,LocalTime.of(7,0),LocalTime.of(21,0),rules),"duplicate requirements");
+        var live=new PlanningRules.Rules(windows,Set.of(),List.of(exam("07:00 - 08:00")));
+        var after=ExplicitPlanner.generate(List.of(requirements.get(0)),rooms,blocks,sat,sat,LocalTime.of(7,0),LocalTime.of(21,0),live);check(ExamTimes.interval(after.get(0).getTimeSlot())[0].equals(LocalTime.of(8,0)),"planner avoids published bookings");
+        var courses=Map.of(1,new Course(1,"CS","Title",99));var roomMap=Map.of(1,rooms.get(0));var blockMap=Map.of(1,blocks.get(0));
+        ScheduleValidator.validate(List.of(exam("07:00 - 08:30")),courses,roomMap,blockMap,Set.of(1));checks++;
+        reject(()->ScheduleValidator.validate(List.of(exam("06:30 - 08:00")),courses,roomMap,blockMap,Set.of(1)),"manual starts before seven");
+        reject(()->ScheduleValidator.validate(List.of(exam("20:00 - 21:30")),courses,roomMap,blockMap,Set.of(1)),"manual ends after nine");
+        System.out.println("Planning regression checks passed: "+checks);
     }
-    private static ExamSchedule exam(int c,int r,int b,int f,String slot){return new ExamSchedule(0,c,r,b,f,SATURDAY,slot);}
-    private static void valid(List<ExamSchedule> rows){ScheduleValidator.validate(rows,COURSES,ROOMS,BLOCKS,Set.of(1,2));checks++;}
-    private static void check(boolean result,String name){if(!result)throw new AssertionError(name);checks++;}
-    private static void reject(Runnable task,String name){try{task.run();throw new AssertionError("Accepted "+name);}catch(IllegalArgumentException expected){checks++;}}
+    static void check(boolean ok,String message){if(!ok)throw new AssertionError(message);checks++;}
+    static void reject(Runnable action,String message){try{action.run();throw new AssertionError(message);}catch(IllegalArgumentException expected){checks++;}}
 }

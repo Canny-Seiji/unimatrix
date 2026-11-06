@@ -1,6 +1,5 @@
 package com.unimatrix.dao;
 
-import com.unimatrix.service.ExamTimes;
 import com.unimatrix.service.ScheduleEditorService;
 import java.sql.*;
 import java.util.*;
@@ -10,8 +9,8 @@ public class EntityDataDAO {
     public enum Kind {
         ROOM("Rooms", "rooms", "room_id", new String[]{"room_name", "building", "capacity"},
                 new String[]{"Room Name", "Building", "Capacity"}, new int[]{50,50,0}),
-        COURSE("Courses", "courses", "course_id", new String[]{"course_code", "course_title", "duration_hours"},
-                new String[]{"Course Code", "Course Title", "Duration (hours)"}, new int[]{20,100,0}),
+        COURSE("Courses", "courses", "course_id", new String[]{"course_code", "course_title"},
+                new String[]{"Course Code", "Course Title"}, new int[]{20,100}),
         BLOCK("Block Sections", "block_sections", "block_section_id", new String[]{"section_name", "student_count"},
                 new String[]{"Section Name", "Students"}, new int[]{50,0}),
         FACULTY("Faculty", "faculty", "faculty_id", new String[]{"faculty_name", "department"},
@@ -52,8 +51,7 @@ public class EntityDataDAO {
                     throw new IllegalArgumentException(kind.labels[i] + " exceeds " + kind.limits[i] + " characters.");
             } else {
                 try {
-                    if (kind == Kind.COURSE) { float hours=Float.parseFloat(value); ExamTimes.durationMinutes(hours); value=Float.toString(hours); }
-                    else { int number=Integer.parseInt(value); if (number<=0) throw new NumberFormatException(); value=Integer.toString(number); }
+                    int number=Integer.parseInt(value); if (number<=0) throw new NumberFormatException(); value=Integer.toString(number);
                 } catch (NumberFormatException ex) { throw new IllegalArgumentException(kind.labels[i] + " must be a positive number."); }
             }
             values.add(value);
@@ -71,10 +69,10 @@ public class EntityDataDAO {
                 if (!Objects.equals(current.get(old.id()),old))
                     throw new SQLException("Record " + old.id() + " changed or was deleted elsewhere. Reload before saving.");
                 List<String> refs = new ArrayList<>();
-                try (PreparedStatement p = c.prepareStatement("SELECT DISTINCT e.schedule_id, s.name FROM exam_schedules e LEFT JOIN schedule_files s ON s.id=e.schedule_id WHERE e."+kind.foreignKey+"=?")) {
+                try (PreparedStatement p = c.prepareStatement("SELECT DISTINCT e.schedule_id, s.name, s.deleted FROM exam_schedules e LEFT JOIN schedule_files s ON s.id=e.schedule_id WHERE e."+kind.foreignKey+"=?")) {
                     p.setInt(1,old.id());
                     try (ResultSet r=p.executeQuery()) { while(r.next()) {
-                        int id=r.getInt(1); if(id>0) affectedSchedules.add(id);
+                        int id=r.getInt(1); if(id>0 && !r.getBoolean(3)) affectedSchedules.add(id);
                         refs.add(r.getString(2)==null?"legacy exam rows":r.getString(2)+" (#"+id+")");
                     }}
                 }
@@ -89,14 +87,13 @@ public class EntityDataDAO {
                 try(PreparedStatement p=c.prepareStatement(sql)) {
                     for(int i=0;i<row.values().size();i++) {
                         if(kind.limits[i]>0) p.setString(i+1,row.values().get(i));
-                        else if(kind==Kind.COURSE) p.setFloat(i+1,Float.parseFloat(row.values().get(i)));
                         else p.setInt(i+1,Integer.parseInt(row.values().get(i)));
                     }
                     if(row.id()>0) p.setInt(row.values().size()+1,row.id());
                     if(p.executeUpdate()!=1) throw new SQLException("Record was not saved.");
                 }
             }
-            // Capacity, population or duration edits must not invalidate an existing timetable.
+            // Capacity/population edits must not invalidate active timetables. Trash is revalidated on save/publication.
             if(kind!=Kind.FACULTY) for(int id:affectedSchedules) {
                 try { ScheduleEditorService.validateStored(c,id); }
                 catch(IllegalArgumentException ex) { throw new IllegalArgumentException("Change would invalidate schedule #"+id+": "+ex.getMessage(),ex); }

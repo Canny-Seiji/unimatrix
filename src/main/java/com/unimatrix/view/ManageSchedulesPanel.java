@@ -28,18 +28,23 @@ public class ManageSchedulesPanel extends JPanel {
     private final JButton edit=new JButton("Open / Edit"),export=new JButton("Export PDF"),delete=new JButton("Delete");
     private final JLabel scope=new JLabel("Select a schedule to edit or export.");
     private final ManualSchedulePanel manual;
+    private final AutoGeneratePanel automatic;
     private int loadSequence;
     public ManageSchedulesPanel() {
         super(new BorderLayout());setOpaque(false);explorer.setOpaque(false);
         manual=new ManualSchedulePanel(this::saved);
+        automatic=new AutoGeneratePanel(this::saved);
         JPanel actions=BackgroundTask.bar();JButton addFolder=new JButton("New Folder"),newSchedule=new JButton("New Schedule"),refresh=new JButton("Refresh");
         actions.add(addFolder);actions.add(newSchedule);actions.add(edit);actions.add(export);actions.add(delete);actions.add(refresh);
-        addFolder.addActionListener(e->createFolder());newSchedule.addActionListener(e->{manual.newSchedule(selectedFolder(),selectedFolderLabel());tabs.setSelectedIndex(2);});
+        JButton rename=new JButton("Rename / Move"),history=new JButton("History / Undo"),trash=new JButton("Trash / Restore"),publish=new JButton("Publish / Unpublish"),newManual=new JButton("New Manual");
+        actions.add(rename);actions.add(history);actions.add(trash);actions.add(publish);actions.add(newManual);
+        rename.addActionListener(e->renameMove());history.addActionListener(e->history());trash.addActionListener(e->restoreTrash());publish.addActionListener(e->publication());newManual.addActionListener(e->{manual.newSchedule(selectedFolder(),selectedFolderLabel());tabs.setSelectedIndex(2);});
+        addFolder.addActionListener(e->createFolder());newSchedule.addActionListener(e->{automatic.setDestination(selectedFolder(),selectedFolderLabel());tabs.setSelectedIndex(1);});
         refresh.addActionListener(e->refresh());edit.addActionListener(e->openSelected());export.addActionListener(e->exportSelected());delete.addActionListener(e->deleteSelected());
         tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
         tree.setRowHeight(26);tree.setShowsRootHandles(true);tree.addTreeSelectionListener(e->{updateButtons();loadRows();});
         tree.addMouseListener(new MouseAdapter(){public void mouseClicked(MouseEvent e){if(e.getClickCount()==2)openSelected();}});
-        table.setRowHeight(30);table.setAutoCreateRowSorter(true);table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        PlannerControls.stripes(table);table.setRowHeight(32);table.setAutoCreateRowSorter(true);table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         for(int i=0;i<table.getColumnCount();i++)table.getColumnModel().getColumn(i).setPreferredWidth(i==0?170:i==3?160:140);
         JPanel left=new JPanel(new BorderLayout());left.add(new JScrollPane(tree));left.setMinimumSize(new Dimension(180,100));
         JPanel right=new JPanel(new BorderLayout(0,8));right.add(scope,BorderLayout.NORTH);right.add(new JScrollPane(table));
@@ -48,7 +53,7 @@ public class ManageSchedulesPanel extends JPanel {
         searchBtn.addActionListener(e->filter.run());search.addActionListener(e->filter.run());clear.addActionListener(e->{search.setText("");filter.run();});right.add(searchBar,BorderLayout.SOUTH);
         JSplitPane split=new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,left,right);split.setDividerLocation(240);split.setResizeWeight(.2);
         explorer.add(actions,BorderLayout.NORTH);explorer.add(split,BorderLayout.CENTER);
-        tabs.addTab("Schedules",explorer);tabs.addTab("Auto-Generate Config",new AutoGeneratePanel(this::saved));tabs.addTab("Manual Encoding",manual);add(tabs);updateButtons();SwingUtilities.invokeLater(this::refresh);
+        tabs.addTab("Schedules",explorer);tabs.addTab("Auto-Generate Config",automatic);tabs.addTab("Manual Encoding",manual);tabs.addTab("Availability & Dates",new AvailabilityPanel());add(tabs);updateButtons();SwingUtilities.invokeLater(this::refresh);
     }
     private record TreeData(List<ScheduleFolder> folders,List<ScheduleFile> files) { }
     public void refresh(){refresh(null);}
@@ -94,11 +99,17 @@ public class ManageSchedulesPanel extends JPanel {
     private void createFolder() {
         String name=JOptionPane.showInputDialog(this,"Folder name:");if(name==null)return;String trimmed=name.trim();
         if(trimmed.isEmpty()||trimmed.length()>100){BackgroundTask.error(this,new IllegalArgumentException("Folder name must contain 1-100 characters."));return;}
-        Integer parent=selectedFolder();BackgroundTask.run(explorer,()->folders.createFolder(parent,trimmed),created->refresh());
+        Integer parent=selectedFolder();BackgroundTask.run(explorer,()->folders.createFolder(parent,trimmed),created->{
+            if(created==null)throw new IllegalArgumentException("Database returned no folder ID.");
+            // Insert the returned object directly; do not discard a completed create behind a busy refresh.
+            DefaultMutableTreeNode parentNode=root;
+            for(var it=root.depthFirstEnumeration();it.hasMoreElements();){DefaultMutableTreeNode n=(DefaultMutableTreeNode)it.nextElement();if(n.getUserObject() instanceof ScheduleFolder f&&Objects.equals(f.getId(),created.getParentId()))parentNode=n;}
+            DefaultMutableTreeNode child=new DefaultMutableTreeNode(created,true);treeModel.insertNodeInto(child,parentNode,parentNode.getChildCount());TreePath path=new TreePath(child.getPath());tree.expandPath(new TreePath(parentNode.getPath()));tree.setSelectionPath(path);tree.scrollPathToVisible(path);
+        });
     }
     private void deleteSelected() {
         Object obj=selectedObject();if(!(obj instanceof ScheduleFile)&&!(obj instanceof ScheduleFolder))return;
-        if(JOptionPane.showConfirmDialog(this,"Permanently delete '"+obj+"' and its contents?","Delete",JOptionPane.YES_NO_OPTION,JOptionPane.WARNING_MESSAGE)!=JOptionPane.YES_OPTION)return;
+        if(JOptionPane.showConfirmDialog(this,"Move '"+obj+"' and its contents to Trash?","Delete",JOptionPane.YES_NO_OPTION,JOptionPane.WARNING_MESSAGE)!=JOptionPane.YES_OPTION)return;
         BackgroundTask.run(explorer,()->obj instanceof ScheduleFile f?folders.deleteFile(f.getId()):folders.deleteFolder(((ScheduleFolder)obj).getId()),ok->{if(!ok)throw new IllegalArgumentException("Item no longer exists.");refresh();});
     }
     private void exportSelected() {
@@ -110,4 +121,13 @@ public class ManageSchedulesPanel extends JPanel {
         Path target=path;
         BackgroundTask.run(explorer,()->{ScheduleDocument doc=service.load(file.getId());SchedulePdfExporter.export(doc,target);return target;},saved->JOptionPane.showMessageDialog(this,"PDF exported:\n"+saved));
     }
+    private WorkspaceService.Item selectedItem(){Object o=selectedObject();if(o instanceof ScheduleFolder f)return new WorkspaceService.Item(f.getId(),true,f.getParentId(),f.getName());if(o instanceof ScheduleFile f)return new WorkspaceService.Item(f.getId(),false,f.getFolderId(),f.getName());return null;}
+    private void renameMove(){WorkspaceService.Item selected=selectedItem();if(selected==null)return;BackgroundTask.run(explorer,()->WorkspaceService.items(false),items->{
+        JTextField name=new JTextField(selected.name(),22);JComboBox<WorkspaceService.Item> destinations=new JComboBox<>();destinations.addItem(new WorkspaceService.Item(0,true,null,"Workspace root"));for(var item:items)if(item.folder())destinations.addItem(item);for(int i=0;i<destinations.getItemCount();i++)if(Objects.equals(selected.parent(),destinations.getItemAt(i).id()))destinations.setSelectedIndex(i);
+        if(JOptionPane.showConfirmDialog(this,new Object[]{"Name",name,"Destination",destinations},"Rename / Move",JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION)return;var dest=(WorkspaceService.Item)destinations.getSelectedItem();String text=name.getText();BackgroundTask.run(explorer,()->{WorkspaceService.renameMove(selected,text,dest.id()==0?null:dest.id());return true;},ok->refresh());});}
+    private void restoreTrash(){BackgroundTask.run(explorer,()->WorkspaceService.items(true),items->{if(items.isEmpty()){JOptionPane.showMessageDialog(this,"Trash is empty.");return;}var selected=(WorkspaceService.Item)JOptionPane.showInputDialog(this,"Restore parent folders before their children. Schedules restore as drafts.","Trash",JOptionPane.PLAIN_MESSAGE,null,items.toArray(),items.get(0));if(selected!=null)BackgroundTask.run(explorer,()->{WorkspaceService.recover(selected);return true;},ok->refresh());});}
+    private void history(){if(!(selectedObject() instanceof ScheduleFile file))return;BackgroundTask.run(explorer,()->new Object[]{service.load(file.getId()),ScheduleHistory.list(file.getId())},data->{
+        var current=(ScheduleDocument)data[0];@SuppressWarnings("unchecked") List<ScheduleHistory.Entry> entries=(List<ScheduleHistory.Entry>)data[1];if(entries.isEmpty()){JOptionPane.showMessageDialog(this,"No earlier saved revisions.");return;}var selected=(ScheduleHistory.Entry)JOptionPane.showInputDialog(this,"Restore which saved revision? Current data will be recorded before restoration.","Schedule history",JOptionPane.PLAIN_MESSAGE,null,entries.toArray(),entries.get(0));if(selected!=null)BackgroundTask.run(explorer,()->{ScheduleHistory.restore(file.getId(),selected.id(),current.revision());return true;},ok->refresh(file.getId()));});}
+    private void publication(){if(!(selectedObject() instanceof ScheduleFile file))return;BackgroundTask.run(explorer,()->{try(var c=DatabaseConnection.getConnection()){return new Object[]{service.load(file.getId()),PlanningRules.isPublished(c,file.getId())};}},data->{var doc=(ScheduleDocument)data[0];boolean published=(Boolean)data[1];if(JOptionPane.showConfirmDialog(this,(published?"Unpublish":"Publish")+" this schedule? Publishing checks other published schedules.","Publication",JOptionPane.YES_NO_OPTION)!=JOptionPane.YES_OPTION)return;BackgroundTask.run(explorer,()->{ScheduleHistory.publication(file.getId(),!published,doc.revision());return true;},ok->{refresh(file.getId());JOptionPane.showMessageDialog(this,published?"Schedule is now a draft.":"Schedule published.");});});}
+
 }

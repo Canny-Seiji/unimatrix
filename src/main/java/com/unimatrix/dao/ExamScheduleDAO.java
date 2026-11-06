@@ -16,7 +16,7 @@ public class ExamScheduleDAO {
             "c.course_code, r.room_name, b.section_name, f.faculty_name AS faculty_name ";
 
     private static final String SCHEDULE_JOINS =
-            "FROM exam_schedules e " +
+            "FROM exam_schedules e JOIN schedule_files sf ON sf.id=e.schedule_id AND sf.deleted=FALSE " +
             "LEFT JOIN courses c ON e.course_id = c.id " +
             "LEFT JOIN rooms r ON e.room_id = r.id " +
             "LEFT JOIN block_sections b ON e.block_section_id = b.id " +

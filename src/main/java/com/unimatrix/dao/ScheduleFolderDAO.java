@@ -7,12 +7,12 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Persistence for the explorer: folders and schedule files. Deletes cascade (see migration_001). */
+/** Persistence for the explorer: folders and schedule files. Deletion uses recoverable Trash. */
 public class ScheduleFolderDAO {
 
     public List<ScheduleFolder> getAllFolders() {
         List<ScheduleFolder> out = new ArrayList<>();
-        String q = "SELECT id, parent_id, name FROM schedule_folders ORDER BY name";
+        String q = "SELECT id, parent_id, name FROM schedule_folders WHERE deleted=FALSE ORDER BY name";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(q)) {
@@ -29,7 +29,7 @@ public class ScheduleFolderDAO {
 
     public List<ScheduleFile> getAllFiles() {
         List<ScheduleFile> out = new ArrayList<>();
-        String q = "SELECT id, folder_id, name FROM schedule_files ORDER BY name";
+        String q = "SELECT id, folder_id, name FROM schedule_files WHERE deleted=FALSE ORDER BY name";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(q)) {
@@ -44,54 +44,39 @@ public class ScheduleFolderDAO {
         return out;
     }
 
-    /** @return the created folder, or null on failure. parentId null = root level. */
+    /** Creates an active folder under an active parent, using the shared write lock. */
     public ScheduleFolder createFolder(Integer parentId, String name) {
-        String q = "INSERT INTO schedule_folders (parent_id, name) VALUES (?, ?)";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(q, Statement.RETURN_GENERATED_KEYS)) {
-            if (parentId == null) ps.setNull(1, Types.INTEGER); else ps.setInt(1, parentId);
-            ps.setString(2, name);
-            ps.executeUpdate();
-            try (ResultSet keys = ps.getGeneratedKeys()) {
-                if (keys.next()) return new ScheduleFolder(keys.getInt(1), parentId, name);
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException("Database operation failed: " + e.getMessage(), e);
-        }
-        return null;
+        int id=create(false,parentId,name);
+        return new ScheduleFolder(id,parentId,name.trim());
     }
 
-    /** @return the created schedule file, or null on failure. folderId null = root level. */
     public ScheduleFile createFile(Integer folderId, String name) {
-        String q = "INSERT INTO schedule_files (folder_id, name) VALUES (?, ?)";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(q, Statement.RETURN_GENERATED_KEYS)) {
-            if (folderId == null) ps.setNull(1, Types.INTEGER); else ps.setInt(1, folderId);
-            ps.setString(2, name);
-            ps.executeUpdate();
-            try (ResultSet keys = ps.getGeneratedKeys()) {
-                if (keys.next()) return new ScheduleFile(keys.getInt(1), folderId, name);
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException("Database operation failed: " + e.getMessage(), e);
-        }
-        return null;
+        int id=create(true,folderId,name);
+        return new ScheduleFile(id,folderId,name.trim());
     }
 
-    /** Deletes the folder, its sub-folders, their schedule files and all exam rows inside (cascade). */
+    private int create(boolean file,Integer parent,String name) {
+        if(name==null||name.isBlank()||name.length()>100)throw new IllegalArgumentException("Name must contain 1-100 characters.");
+        try { return Transactions.write(c->{
+            if(parent!=null)try(PreparedStatement p=c.prepareStatement("SELECT id FROM schedule_folders WHERE id=? AND deleted=FALSE")){
+                p.setInt(1,parent);try(ResultSet r=p.executeQuery()){if(!r.next())throw new SQLException("Parent folder was deleted. Refresh and select an active folder.");}
+            }
+            String sql=file?"INSERT INTO schedule_files(folder_id,name) VALUES (?,?)":"INSERT INTO schedule_folders(parent_id,name) VALUES (?,?)";
+            try(PreparedStatement p=c.prepareStatement(sql,Statement.RETURN_GENERATED_KEYS)){
+                p.setObject(1,parent,Types.INTEGER);p.setString(2,name.trim());p.executeUpdate();
+                try(ResultSet r=p.getGeneratedKeys()){if(!r.next())throw new SQLException("Database returned no created item ID.");return r.getInt(1);}
+            }
+        }); }catch(SQLException e){throw new IllegalStateException("Database operation failed: "+e.getMessage(),e);}
+    }
+
+    /** Move the folder and its active descendants to recoverable Trash. */
     public boolean deleteFolder(int id) { return deleteById("schedule_folders", id); }
 
-    /** Deletes the schedule file and its exam rows (cascade). */
+    /** Move the schedule to recoverable Trash. */
     public boolean deleteFile(int id) { return deleteById("schedule_files", id); }
 
     private boolean deleteById(String table, int id) {
-        try {
-            return Transactions.write(conn -> {
-                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM " + table + " WHERE id = ?")) {
-                    ps.setInt(1, id);
-                    return ps.executeUpdate() > 0;
-                }
-            });
-        } catch (SQLException ex) { throw new IllegalStateException("Delete failed: " + ex.getMessage(), ex); }
+        try { com.unimatrix.service.WorkspaceService.trash(id,table.equals("schedule_folders"));return true; }
+        catch(SQLException ex){throw new IllegalStateException(ex.getMessage(),ex);}
     }
 }

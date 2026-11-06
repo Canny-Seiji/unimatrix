@@ -12,11 +12,11 @@ public class ScheduleEditorService {
     public Catalog catalog() throws SQLException {
         try(Connection c=DatabaseConnection.getConnection()) { return catalog(c); }
     }
-    private static Catalog catalog(Connection c) throws SQLException {
+    public static Catalog catalog(Connection c) throws SQLException {
         EntityDataDAO dao=new EntityDataDAO();
         List<Course> courses=new ArrayList<>(); List<Room> rooms=new ArrayList<>();
         List<BlockSection> blocks=new ArrayList<>(); List<Faculty> faculty=new ArrayList<>();
-        for(var r:dao.load(c,EntityDataDAO.Kind.COURSE)) courses.add(new Course(r.id(),r.values().get(0),r.values().get(1),Float.parseFloat(r.values().get(2))));
+        for(var r:dao.load(c,EntityDataDAO.Kind.COURSE)) courses.add(new Course(r.id(),r.values().get(0),r.values().get(1),0));
         for(var r:dao.load(c,EntityDataDAO.Kind.ROOM)) rooms.add(new Room(r.id(),r.values().get(0),r.values().get(1),Integer.parseInt(r.values().get(2))));
         for(var r:dao.load(c,EntityDataDAO.Kind.BLOCK)) blocks.add(new BlockSection(r.id(),r.values().get(0),Integer.parseInt(r.values().get(1))));
         for(var r:dao.load(c,EntityDataDAO.Kind.FACULTY)) faculty.add(new Faculty(r.id(),r.values().get(0),r.values().get(1)));
@@ -37,9 +37,9 @@ public class ScheduleEditorService {
             catch(SQLException|RuntimeException ex) { c.rollback(); throw ex; }
         }
     }
-    private static ScheduleDocument read(Connection c,int id) throws SQLException {
+    public static ScheduleDocument read(Connection c,int id) throws SQLException {
         Integer folder; String name,period,year,semester; long revision;
-        try(PreparedStatement p=c.prepareStatement("SELECT folder_id,name,examination_period,academic_year,semester,revision FROM schedule_files WHERE id=?")) {
+        try(PreparedStatement p=c.prepareStatement("SELECT folder_id,name,examination_period,academic_year,semester,revision FROM schedule_files WHERE id=? AND deleted=FALSE")) {
             p.setInt(1,id);
             try(ResultSet r=p.executeQuery()) {
                 if(!r.next()) throw new SQLException("Schedule no longer exists. Refresh the explorer.");
@@ -69,7 +69,11 @@ public class ScheduleEditorService {
         if(document.exams().isEmpty()) throw new IllegalArgumentException("Add at least one completed exam row.");
         return Transactions.write(c -> {
             validate(document.exams(),catalog(c));
+            if(document.folderId()!=null)try(PreparedStatement p=c.prepareStatement("SELECT id FROM schedule_folders WHERE id=? AND deleted=FALSE")){p.setInt(1,document.folderId());try(ResultSet rows=p.executeQuery()){if(!rows.next())throw new SQLException("Destination folder was deleted. Choose an active folder.");}}
             int id=document.id();
+            boolean published=!asNew&&id>0&&PlanningRules.isPublished(c,id);
+            PlanningRules.validate(c,asNew?0:id,document.exams(),published);
+            if(!asNew&&id>0) ScheduleHistory.capture(c,read(c,id),"Before edit");
             if(asNew || id==0) {
                 try(PreparedStatement p=c.prepareStatement("INSERT INTO schedule_files (folder_id,name,examination_period,academic_year,semester) VALUES (?,?,?,?,?)",Statement.RETURN_GENERATED_KEYS)) {
                     p.setObject(1,document.folderId(),Types.INTEGER); p.setString(2,document.name().trim()); p.setString(3,document.period());
@@ -77,7 +81,7 @@ public class ScheduleEditorService {
                     try(ResultSet r=p.getGeneratedKeys()) { if(!r.next()) throw new SQLException("No schedule ID returned."); id=r.getInt(1); }
                 }
             } else {
-                try(PreparedStatement p=c.prepareStatement("UPDATE schedule_files SET name=?,examination_period=?,academic_year=?,semester=?,revision=revision+1 WHERE id=? AND revision=?")) {
+                try(PreparedStatement p=c.prepareStatement("UPDATE schedule_files SET name=?,examination_period=?,academic_year=?,semester=?,revision=revision+1 WHERE id=? AND revision=? AND deleted=FALSE")) {
                     p.setString(1,document.name().trim());p.setString(2,document.period());p.setString(3,document.academicYear().trim());p.setString(4,document.semester().trim());
                     p.setInt(5,id);p.setLong(6,document.revision());
                     if(p.executeUpdate()!=1) throw new SQLException("Schedule changed or was deleted elsewhere. Reopen it before saving; your draft has been retained.");
@@ -92,12 +96,12 @@ public class ScheduleEditorService {
         Transactions.write(c -> {
             ScheduleDocument stored=read(c,id);
             List<ExamSchedule> all=new ArrayList<>(stored.exams()); all.addAll(exams);
-            validate(all,catalog(c)); insert(c,id,exams);
+            validate(all,catalog(c)); PlanningRules.validate(c,id,all,PlanningRules.isPublished(c,id)); ScheduleHistory.capture(c,stored,"Before append"); insert(c,id,exams);
             try(PreparedStatement p=c.prepareStatement("UPDATE schedule_files SET revision=revision+1 WHERE id=?")){p.setInt(1,id);p.executeUpdate();}
             return null;
         });
     }
-    private static void insert(Connection c,int id,List<ExamSchedule> exams) throws SQLException {
+    public static void insert(Connection c,int id,List<ExamSchedule> exams) throws SQLException {
         String sql="INSERT INTO exam_schedules (course_id,room_id,block_section_id,faculty_id,schedule_id,exam_date,time_slot,start_time,end_time) VALUES (?,?,?,?,?,?,?,?,?)";
         try(PreparedStatement p=c.prepareStatement(sql)) {
             for(ExamSchedule e:exams) {

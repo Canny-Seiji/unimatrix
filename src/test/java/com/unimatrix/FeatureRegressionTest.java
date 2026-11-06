@@ -2,7 +2,7 @@ package com.unimatrix;
 
 import org.junit.Test;
 public class FeatureRegressionTest {
-    @Test public void scheduleValidationAndPdf() throws Exception {
+    @Test public void explicitPlanningAndConstraints() throws Exception {
         com.unimatrix.service.FeatureRegressionChecks.main(new String[]{"target/pdf-check.pdf"});
     }
     @Test public void gridEditingAndFilteredSave() throws Exception {

@@ -23,8 +23,8 @@ public final class ScheduleValidator {
             if (b.getStudentCount() <= 0 || r.getCapacity() < b.getStudentCount())
                 throw new IllegalArgumentException(prefix + r.getRoomName() + " cannot accommodate " + b.getStudentCount() + " students.");
             var times = ExamTimes.interval(e.getTimeSlot());
-            if (!ExamTimes.end(times[0], c.getDurationHours()).equals(times[1]))
-                throw new IllegalArgumentException(prefix + "end time must match the current course duration. Reopen or edit the row.");
+            if (times[0].isBefore(java.time.LocalTime.of(7,0)) || times[1].isAfter(java.time.LocalTime.of(21,0)))
+                throw new IllegalArgumentException(prefix + "exam hours must be between 7 AM and 9 PM.");
             if (!duplicates.add(e.getCourseId() + ":" + e.getBlockSectionId()))
                 throw new IllegalArgumentException(prefix + "duplicate course-block exam in this schedule.");
             for (int j = 0; j < i; j++) {
