@@ -13,7 +13,7 @@ public class ExamScheduleDAO {
 
     private static final String SCHEDULE_COLUMNS =
             "e.id, e.course_id, e.room_id, e.block_section_id, e.faculty_id, e.schedule_id, e.exam_date, e.time_slot, " +
-            "c.course_code, r.room_name, b.section_name, f.full_name AS faculty_name ";
+            "c.course_code, r.room_name, b.section_name, f.faculty_name AS faculty_name ";
 
     private static final String SCHEDULE_JOINS =
             "FROM exam_schedules e " +
@@ -70,115 +70,40 @@ public class ExamScheduleDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching exam schedules:");
-            e.printStackTrace();
+            throw new IllegalStateException("Cannot load exam schedules: " + e.getMessage(), e);
         }
         return schedules;
     }
 
     public List<String> findConflicts(int scheduleId, ExamSchedule schedule) throws SQLException {
-        if (schedule.getExamDate() == null || schedule.getTimeSlot() == null) return List.of();
-
-        String query = "SELECT room_id, block_section_id, faculty_id FROM exam_schedules " +
-                "WHERE schedule_id = ? AND exam_date = ? AND time_slot = ?";
         Set<String> conflicts = new LinkedHashSet<>();
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
-            stmt.setInt(1, scheduleId);
-            stmt.setDate(2, Date.valueOf(schedule.getExamDate()));
-            stmt.setString(3, schedule.getTimeSlot());
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    if (rs.getInt("room_id") == schedule.getRoomId()) {
-                        conflicts.add("Room is already booked at this date and time.");
-                    }
-                    if (rs.getInt("block_section_id") == schedule.getBlockSectionId()) {
-                        conflicts.add("Block section already has an exam at this date and time.");
-                    }
-                    if (rs.getInt("faculty_id") == schedule.getFacultyId()) {
-                        conflicts.add("Faculty member already has an exam at this date and time.");
-                    }
-                }
+        for (ExamSchedule other : getSchedulesByFile(scheduleId)) {
+            if (schedule.getId() > 0 && schedule.getId() == other.getId()) continue;
+            if (other.getCourseId() == schedule.getCourseId() && other.getBlockSectionId() == schedule.getBlockSectionId())
+                conflicts.add("Course-block exam already exists in this schedule.");
+            if (java.util.Objects.equals(other.getExamDate(), schedule.getExamDate())
+                    && com.unimatrix.service.ExamTimes.overlaps(other.getTimeSlot(), schedule.getTimeSlot())) {
+                if (other.getRoomId() == schedule.getRoomId()) conflicts.add("Room overlaps an existing exam.");
+                if (other.getBlockSectionId() == schedule.getBlockSectionId()) conflicts.add("Block overlaps an existing exam.");
+                if (other.getFacultyId() == schedule.getFacultyId()) conflicts.add("Faculty overlaps an existing exam.");
             }
         }
         return new ArrayList<>(conflicts);
     }
 
     public boolean saveSchedule(ExamSchedule schedule) {
-        String query = "INSERT INTO exam_schedules " +
-                "(course_id, room_id, block_section_id, faculty_id, schedule_id, exam_date, time_slot) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?)";
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
-
-            pstmt.setInt(1, schedule.getCourseId());
-            pstmt.setInt(2, schedule.getRoomId());
-            pstmt.setInt(3, schedule.getBlockSectionId());
-            pstmt.setInt(4, schedule.getFacultyId());
-            pstmt.setInt(5, schedule.getScheduleId());
-            pstmt.setDate(6, schedule.getExamDate() != null ? Date.valueOf(schedule.getExamDate()) : null);
-            pstmt.setString(7, schedule.getTimeSlot());
-
-            return pstmt.executeUpdate() > 0;
-        } catch (SQLException e) {
-            System.err.println("Error saving exam schedule:");
-            e.printStackTrace();
-            return false;
-        }
+        return saveAll(List.of(schedule), schedule.getScheduleId());
     }
 
     public boolean saveAll(List<ExamSchedule> schedules, int scheduleId) {
-        if (schedules.isEmpty()) return true;
-
-        String query = "INSERT INTO exam_schedules " +
-                "(course_id, room_id, block_section_id, faculty_id, schedule_id, exam_date, time_slot) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?)";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
-            conn.setAutoCommit(false);
-            try {
-                for (ExamSchedule schedule : schedules) {
-                    pstmt.setInt(1, schedule.getCourseId());
-                    pstmt.setInt(2, schedule.getRoomId());
-                    pstmt.setInt(3, schedule.getBlockSectionId());
-                    pstmt.setInt(4, schedule.getFacultyId());
-                    pstmt.setInt(5, scheduleId);
-                    pstmt.setDate(6, schedule.getExamDate() != null ? Date.valueOf(schedule.getExamDate()) : null);
-                    pstmt.setString(7, schedule.getTimeSlot());
-                    pstmt.addBatch();
-                }
-                pstmt.executeBatch();
-                conn.commit();
-                return true;
-            } catch (SQLException e) {
-                try {
-                    conn.rollback();
-                } catch (SQLException rollbackError) {
-                    e.addSuppressed(rollbackError);
-                }
-                throw e;
-            }
-        } catch (SQLException e) {
-            System.err.println("Error saving exam schedules:");
-            e.printStackTrace();
-            return false;
-        }
+        try {
+            new com.unimatrix.service.ScheduleEditorService().append(scheduleId, schedules);
+            return true;
+        } catch (SQLException ex) { throw new IllegalStateException("Database save failed: " + ex.getMessage(), ex); }
     }
 
-    public boolean clearAllSchedules() {
-        String query = "DELETE FROM exam_schedules";
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             Statement stmt = conn.createStatement()) {
-
-            stmt.executeUpdate(query);
-            return true;
-        } catch (SQLException e) {
-            System.err.println("Error clearing schedules table:");
-            e.printStackTrace();
-            return false;
-        }
+    /** Global deletion is retired; use an explicitly selected schedule or folder. */
+    @Deprecated public boolean clearAllSchedules() {
+        throw new UnsupportedOperationException("Select a schedule or folder to delete; global clearing is disabled.");
     }
 }

@@ -1,6 +1,8 @@
-package com.unimatrix.view.components;
+package com.unimatrix.components;
 
 import org.junit.Test;
+
+import com.unimatrix.view.components.WrapLayout;
 
 import javax.swing.*;
 import java.awt.*;

@@ -26,8 +26,7 @@ public class RoomDAO {
             }
 
         } catch (SQLException e) {
-            System.err.println("Error fetching rooms from database:");
-            e.printStackTrace();
+            throw new IllegalStateException("Database read failed: " + e.getMessage(), e);
         }
 
         return rooms;
@@ -48,9 +47,7 @@ public class RoomDAO {
             return rowsAffected > 0;
 
         } catch (SQLException e) {
-            System.err.println("Error inserting room into database:");
-            e.printStackTrace();
-            return false;
+            throw new IllegalStateException("Database insert failed: " + e.getMessage(), e);
         }
     }
 

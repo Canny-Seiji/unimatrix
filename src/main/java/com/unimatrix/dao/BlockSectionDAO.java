@@ -24,8 +24,7 @@ public class BlockSectionDAO {
                 ));
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching block sections:");
-            e.printStackTrace();
+            throw new IllegalStateException("Database read failed: " + e.getMessage(), e);
         }
         return sections;
     }
@@ -42,9 +41,7 @@ public class BlockSectionDAO {
 
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Error inserting block section:");
-            e.printStackTrace();
-            return false;
+            throw new IllegalStateException("Database insert failed: " + e.getMessage(), e);
         }
     }
 }

@@ -11,7 +11,13 @@ public class DatabaseConnection {
     private static final String PASSWORD = "admin123"; // Change to your MySQL password
 
     public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(URL, USER, PASSWORD);
+        String url = System.getProperty("unimatrix.db.url", System.getenv().getOrDefault("UNIMATRIX_DB_URL", URL));
+        java.util.Properties properties = new java.util.Properties();
+        properties.setProperty("user", System.getProperty("unimatrix.db.user", System.getenv().getOrDefault("UNIMATRIX_DB_USER", USER)));
+        properties.setProperty("password", System.getProperty("unimatrix.db.password", System.getenv().getOrDefault("UNIMATRIX_DB_PASSWORD", PASSWORD)));
+        properties.setProperty("connectTimeout", "5000");
+        properties.setProperty("socketTimeout", "15000");
+        return DriverManager.getConnection(url, properties);
     }
 
     // Quick main method to test the connection directly

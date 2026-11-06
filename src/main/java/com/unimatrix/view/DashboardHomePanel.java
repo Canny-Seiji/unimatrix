@@ -50,7 +50,7 @@ public class DashboardHomePanel extends JPanel {
         JButton manage = UniMatrixTheme.secondaryButton("Manage data");
         manage.addActionListener(e -> navigator.accept(Page.MANAGE_DATA));
         JButton export = UniMatrixTheme.secondaryButton("Export timetable");
-        export.addActionListener(e -> navigator.accept(Page.EXPORT));
+        export.addActionListener(e -> navigator.accept(Page.MANAGE_SCHEDULES));
 
         JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         row.setOpaque(false);

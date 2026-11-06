@@ -9,7 +9,7 @@ public class FacultyDAO {
 
     public List<Faculty> getAllFaculty() {
         List<Faculty> facultyList = new ArrayList<>();
-        String query = "SELECT id, full_name, department FROM faculty";
+        String query = "SELECT id, faculty_name, department FROM faculty";
 
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
@@ -18,19 +18,18 @@ public class FacultyDAO {
             while (rs.next()) {
                 facultyList.add(new Faculty(
                     rs.getInt("id"),
-                    rs.getString("full_name"),
+                    rs.getString("faculty_name"),
                     rs.getString("department")
                 ));
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching faculty members:");
-            e.printStackTrace();
+            throw new IllegalStateException("Database read failed: " + e.getMessage(), e);
         }
         return facultyList;
     }
 
     public boolean addFaculty(Faculty faculty) {
-        String query = "INSERT INTO faculty (full_name, department) VALUES (?, ?)";
+        String query = "INSERT INTO faculty (faculty_name, department) VALUES (?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
@@ -40,9 +39,7 @@ public class FacultyDAO {
 
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Error inserting faculty member:");
-            e.printStackTrace();
-            return false;
+            throw new IllegalStateException("Database insert failed: " + e.getMessage(), e);
         }
     }
 }

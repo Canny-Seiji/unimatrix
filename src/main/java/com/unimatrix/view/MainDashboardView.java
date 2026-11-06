@@ -27,7 +27,12 @@ public class MainDashboardView extends JFrame {
     public MainDashboardView(String username, DashboardDataProvider provider, Runnable onLogout) {
         super("UniMatrix");
         this.onLogout = onLogout;
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosing(java.awt.event.WindowEvent event) {
+                if (canLeave("Close UniMatrix?")) { dispose(); System.exit(0); }
+            }
+        });
         setMinimumSize(new Dimension(1000, 640));
         setSize(1200, 760);
         setLocationRelativeTo(null);
@@ -45,7 +50,6 @@ public class MainDashboardView extends JFrame {
                 case DASHBOARD: comp = home; break;
                 case MANAGE_DATA: comp = new ManageDataPanel(); break;
                 case MANAGE_SCHEDULES: comp = new ManageSchedulesPanel(); break;
-                case EXPORT: comp = new ExportPanel(); break;
                 default: comp = placeholder(p); break;
             }
             registerPage(p, comp);
@@ -72,6 +76,10 @@ public class MainDashboardView extends JFrame {
         pageTitle.setText(page.title());
         cardLayout.show(workspace, page.name());
         if (page == Page.DASHBOARD) home.refresh();
+        if (page == Page.MANAGE_SCHEDULES) {
+            JComponent wrapper = wrappers.get(page);
+            if (wrapper != null && wrapper.getComponent(0) instanceof ManageSchedulesPanel schedules) schedules.refresh();
+        }
     }
 
     private JPanel buildSidebar() {
@@ -106,10 +114,25 @@ public class MainDashboardView extends JFrame {
         return sidebar;
     }
 
+    private boolean hasState(Component component, String property) {
+        if (component instanceof JComponent c && Boolean.TRUE.equals(c.getClientProperty(property))) return true;
+        if (component instanceof Container container) for (Component child : container.getComponents())
+            if (hasState(child, property)) return true;
+        return false;
+    }
+
+    private boolean canLeave(String action) {
+        if (hasState(workspace, "busy")) {
+            JOptionPane.showMessageDialog(this, "Wait for the current load/save/export to finish before closing or logging out.");
+            return false;
+        }
+        boolean unsaved = hasState(workspace, "dirty");
+        return JOptionPane.showConfirmDialog(this, unsaved ? action + " Unsaved edits will be discarded." : action,
+                "UniMatrix", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION;
+    }
+
     private void confirmLogout() {
-        int choice = JOptionPane.showConfirmDialog(this, "Log out of UniMatrix?", "Log out",
-                JOptionPane.YES_NO_OPTION);
-        if (choice == JOptionPane.YES_OPTION) {
+        if (canLeave("Log out of UniMatrix?")) {
             dispose();
             if (onLogout != null) onLogout.run();
         }

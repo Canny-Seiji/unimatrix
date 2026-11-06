@@ -22,8 +22,7 @@ public class ScheduleFolderDAO {
                 out.add(new ScheduleFolder(rs.getInt("id"), parentId, rs.getString("name")));
             }
         } catch (SQLException e) {
-            System.err.println("Error loading schedule folders:");
-            e.printStackTrace();
+            throw new IllegalStateException("Database operation failed: " + e.getMessage(), e);
         }
         return out;
     }
@@ -40,8 +39,7 @@ public class ScheduleFolderDAO {
                 out.add(new ScheduleFile(rs.getInt("id"), folderId, rs.getString("name")));
             }
         } catch (SQLException e) {
-            System.err.println("Error loading schedule files:");
-            e.printStackTrace();
+            throw new IllegalStateException("Database operation failed: " + e.getMessage(), e);
         }
         return out;
     }
@@ -58,8 +56,7 @@ public class ScheduleFolderDAO {
                 if (keys.next()) return new ScheduleFolder(keys.getInt(1), parentId, name);
             }
         } catch (SQLException e) {
-            System.err.println("Error creating folder:");
-            e.printStackTrace();
+            throw new IllegalStateException("Database operation failed: " + e.getMessage(), e);
         }
         return null;
     }
@@ -76,8 +73,7 @@ public class ScheduleFolderDAO {
                 if (keys.next()) return new ScheduleFile(keys.getInt(1), folderId, name);
             }
         } catch (SQLException e) {
-            System.err.println("Error creating schedule file:");
-            e.printStackTrace();
+            throw new IllegalStateException("Database operation failed: " + e.getMessage(), e);
         }
         return null;
     }
@@ -89,15 +85,13 @@ public class ScheduleFolderDAO {
     public boolean deleteFile(int id) { return deleteById("schedule_files", id); }
 
     private boolean deleteById(String table, int id) {
-        String q = "DELETE FROM " + table + " WHERE id = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(q)) {
-            ps.setInt(1, id);
-            return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
-            System.err.println("Error deleting from " + table + ":");
-            e.printStackTrace();
-            return false;
-        }
+        try {
+            return Transactions.write(conn -> {
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM " + table + " WHERE id = ?")) {
+                    ps.setInt(1, id);
+                    return ps.executeUpdate() > 0;
+                }
+            });
+        } catch (SQLException ex) { throw new IllegalStateException("Delete failed: " + ex.getMessage(), ex); }
     }
 }

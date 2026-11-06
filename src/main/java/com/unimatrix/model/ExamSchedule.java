@@ -16,6 +16,7 @@ public class ExamSchedule {
 
     // Descriptive string fields for view rendering
     private String courseCode;
+    private String courseTitle;
     private String roomName;
     private String blockSection;
     private String facultyName;
@@ -67,6 +68,9 @@ public class ExamSchedule {
     public void setScheduleId(int scheduleId) { this.scheduleId = scheduleId; }
 
     // Getters and Setters for descriptive UI fields
+    public String getCourseTitle() { return courseTitle; }
+    public void setCourseTitle(String title) { courseTitle = title; }
+
     public String getCourseCode() { return courseCode; }
     public void setCourseCode(String courseCode) { this.courseCode = courseCode; }
 
