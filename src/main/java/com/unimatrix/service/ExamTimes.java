@@ -1,4 +1,4 @@
-xpackage com.unimatrix.service;
+package com.unimatrix.service;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
