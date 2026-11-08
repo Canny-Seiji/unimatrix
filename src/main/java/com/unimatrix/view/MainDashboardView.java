@@ -23,6 +23,7 @@ public class MainDashboardView extends JFrame {
     private final ButtonGroup navGroup = new ButtonGroup();
     private final DashboardHomePanel home;
     private final Runnable onLogout;
+    private JLabel headerIcon;
 
     public MainDashboardView(String username, DashboardDataProvider provider, Runnable onLogout) {
         super("UniMatrix");
@@ -50,6 +51,7 @@ public class MainDashboardView extends JFrame {
                 case DASHBOARD: comp = home; break;
                 case MANAGE_DATA: comp = new ManageDataPanel(); break;
                 case MANAGE_SCHEDULES: comp = new ManageSchedulesPanel(); break;
+                case ACCOUNT: comp = new AccountPanel(username, ignored -> { dispose(); if(onLogout!=null) onLogout.run(); }, () -> refreshHeaderIcon(username)); break;
                 default: comp = placeholder(p); break;
             }
             registerPage(p, comp);
@@ -147,9 +149,9 @@ public class MainDashboardView extends JFrame {
         header.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, UniMatrixTheme.BORDER),
                 new EmptyBorder(16, UniMatrixTheme.PAD, 16, UniMatrixTheme.PAD)));
-        JLabel user = UniMatrixTheme.muted("Signed in as " + username);
+        JPanel userBox=new JPanel(new FlowLayout(FlowLayout.RIGHT,8,0));userBox.setOpaque(false);headerIcon=new JLabel(UIManager.getIcon("FileView.fileIcon"));JLabel user = UniMatrixTheme.muted("Signed in as " + username);userBox.add(user);userBox.add(headerIcon);refreshHeaderIcon(username);
         header.add(pageTitle, BorderLayout.WEST);
-        header.add(user, BorderLayout.EAST);
+        header.add(userBox, BorderLayout.EAST);
 
         workspace.setOpaque(false);
         workspace.setBorder(new EmptyBorder(UniMatrixTheme.PAD, UniMatrixTheme.PAD,
@@ -159,6 +161,8 @@ public class MainDashboardView extends JFrame {
         main.add(workspace, BorderLayout.CENTER);
         return main;
     }
+    private void refreshHeaderIcon(String username){if(headerIcon==null)return;try{var account=com.unimatrix.dao.AccountDAO.find(username);headerIcon.setIcon(account!=null&&account.iconPath()!=null&&!account.iconPath().isBlank()?scaledIcon(account.iconPath(),28,28):UIManager.getIcon("FileView.fileIcon"));headerIcon.setPreferredSize(new Dimension(28,28));headerIcon.revalidate();headerIcon.repaint();}catch(Exception ignored){}}
+    private static ImageIcon scaledIcon(String path,int width,int height){ImageIcon source=new ImageIcon(path);Image image=source.getImage();return new ImageIcon(image.getScaledInstance(width,height,Image.SCALE_SMOOTH));}
 
     private JComponent placeholder(Page page) {
         JPanel p = new JPanel(new GridBagLayout());

@@ -31,4 +31,17 @@ public final class WorkspaceService {
             // Restore one item at a time. Children remain in Trash until explicitly selected.
             try(PreparedStatement p=c.prepareStatement("UPDATE "+(item.folder()?"schedule_folders":"schedule_files")+" SET deleted=FALSE"+(item.folder()?"":",published=FALSE,revision=revision+1")+" WHERE id=?")){p.setInt(1,item.id());p.executeUpdate();}return null;});
     }
+    public static void permanentlyDelete(Item item)throws SQLException {
+        Transactions.write(c->{
+            List<Item> deleted=items(c,true);Item actual=deleted.stream().filter(x->x.id()==item.id()&&x.folder()==item.folder()).findFirst().orElseThrow(()->new IllegalArgumentException("Item is no longer in Trash."));
+            Set<Integer> folderIds=new HashSet<>();if(actual.folder())folderIds.add(actual.id());
+            boolean changed;do{changed=false;for(Item child:deleted)if(child.folder()&&child.parent()!=null&&folderIds.contains(child.parent()))changed|=folderIds.add(child.id());}while(changed);
+            for(Item file:deleted)if(!file.folder()&&((!actual.folder()&&file.id()==actual.id())||(actual.folder()&&file.parent()!=null&&folderIds.contains(file.parent())))){
+                try(PreparedStatement p=c.prepareStatement("DELETE FROM schedule_history WHERE schedule_id=?")){p.setInt(1,file.id());p.executeUpdate();}
+                try(PreparedStatement p=c.prepareStatement("DELETE FROM schedule_files WHERE id=?")){p.setInt(1,file.id());p.executeUpdate();}
+            }
+            for(Integer folderId:folderIds)try(PreparedStatement p=c.prepareStatement("DELETE FROM schedule_folders WHERE id=?")){p.setInt(1,folderId);p.executeUpdate();}
+            return null;
+        });
+    }
 }

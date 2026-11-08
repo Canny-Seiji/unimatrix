@@ -4,7 +4,8 @@ package com.unimatrix.view;
 public enum Page {
     DASHBOARD("Dashboard"),
     MANAGE_DATA("Manage Data"),
-    MANAGE_SCHEDULES("Manage Schedules"); // Replaces Scheduler & Schedule Viewer
+    MANAGE_SCHEDULES("Manage Schedules"),
+    ACCOUNT("Account");
 
     private final String title;
     Page(String title) { this.title = title; }
