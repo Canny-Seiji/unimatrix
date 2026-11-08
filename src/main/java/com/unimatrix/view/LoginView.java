@@ -70,6 +70,7 @@ public class LoginView extends JFrame {
         loginBtn.setPreferredSize(new Dimension(300, 38));
         loginBtn.addActionListener(e -> handleLogin());
         panel.add(loginBtn, gbc);
+        gbc.gridy++;gbc.insets=new Insets(8,0,0,0);JButton create=UniMatrixTheme.secondaryButton("Create Account");create.setPreferredSize(new Dimension(300,38));create.addActionListener(e->createAccount());panel.add(create,gbc);
 
         // Allow pressing Enter on password field to trigger login
         passField.addActionListener(e -> handleLogin());
@@ -79,17 +80,18 @@ public class LoginView extends JFrame {
 
     private void handleLogin() {
         String username = userField.getText().trim();
-        String password = new String(passField.getPassword()).trim();
+        String password = new String(passField.getPassword());
 
-        if (username.equals("admin") && password.equals("unimatrix123")) {
-            BackgroundTask.run((JComponent)getContentPane(), () -> { com.unimatrix.dao.SchemaCompatibility.check(); return true; }, ok -> {
+        BackgroundTask.run((JComponent)getContentPane(), () -> { com.unimatrix.dao.SchemaCompatibility.check(); return username.equals("admin")&&password.equals("unimatrix123")||com.unimatrix.dao.AccountDAO.authenticate(username,password)!=null; }, valid -> {
+            if(valid){
                 dispose();
                 new MainDashboardView(username,new DatabaseDashboardProvider(),()->new LoginView().setVisible(true)).setVisible(true);
-            });
-        } else {
+            } else {
             JOptionPane.showMessageDialog(this, "Invalid credentials. Try admin / unimatrix123", "Access Denied", JOptionPane.ERROR_MESSAGE);
-        }
+            }
+        });
     }
+    private void createAccount(){JTextField username=new JTextField();JPasswordField password=new JPasswordField();if(JOptionPane.showConfirmDialog(this,new Object[]{"Username",username,"Password",password},"Create Account",JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION)return;try{com.unimatrix.dao.AccountDAO.create(username.getText().trim(),new String(password.getPassword()));JOptionPane.showMessageDialog(this,"Account created. You can now sign in.");}catch(Exception ex){JOptionPane.showMessageDialog(this,ex.getMessage(),"Could not create account",JOptionPane.ERROR_MESSAGE);}}
 
     public static void main(String[] args) {
         UniMatrixTheme.install();

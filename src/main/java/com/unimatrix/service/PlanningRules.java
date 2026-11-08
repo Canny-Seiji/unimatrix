@@ -27,6 +27,7 @@ public final class PlanningRules {
         if(rules.excluded().contains(date)||date.getDayOfWeek()==DayOfWeek.SUNDAY)return false;
         List<Window> exceptions=rules.windows().stream().filter(w->w.faculty()==exam.getFacultyId()&&date.equals(w.date())).toList();
         List<Window> windows=exceptions.isEmpty()?rules.windows().stream().filter(w->w.faculty()==exam.getFacultyId()&&w.date()==null&&Objects.equals(w.weekday(),date.getDayOfWeek().getValue())).toList():exceptions;
+        if(windows.isEmpty())return true;
         if(windows.stream().anyMatch(w->!w.available()&&time[0].isBefore(w.end())&&w.start().isBefore(time[1])))return false;
         // Merge touching available windows, so 08-09 and 09-10 cover an 08-10 exam.
         LocalTime covered=time[0];

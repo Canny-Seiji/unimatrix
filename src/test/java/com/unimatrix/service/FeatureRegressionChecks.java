@@ -15,7 +15,7 @@ public final class FeatureRegressionChecks {
         var windows=List.of(weekly(LocalTime.of(7,0),LocalTime.of(12,0)),weekly(LocalTime.of(12,0),LocalTime.of(21,0)));
         var rules=new PlanningRules.Rules(windows,Set.of(),List.of());
         check(PlanningRules.available(rules,exam("11:00 - 13:00")),"adjacent availability windows merge");
-        check(!PlanningRules.available(new PlanningRules.Rules(List.of(),Set.of(),List.of()),exam("07:00 - 08:00")),"missing availability rejects");
+        check(PlanningRules.available(new PlanningRules.Rules(List.of(),Set.of(),List.of()),exam("07:00 - 08:00")),"missing availability defaults to planning hours");
         check(!PlanningRules.available(new PlanningRules.Rules(windows,Set.of(sat),List.of()),exam("07:00 - 08:00")),"excluded date");
         List<PlanningRules.Window> exception=new ArrayList<>(windows);exception.add(new PlanningRules.Window(1,null,sat,false,LocalTime.of(7,0),LocalTime.of(21,0)));
         check(!PlanningRules.available(new PlanningRules.Rules(exception,Set.of(),List.of()),exam("07:00 - 08:00")),"unavailable date overrides weekly");

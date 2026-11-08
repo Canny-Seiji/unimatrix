@@ -1,5 +1,6 @@
 package com.unimatrix.view;
 
+import com.unimatrix.dao.ScheduleFolderDAO;
 import com.unimatrix.model.*;
 import com.unimatrix.service.*;
 import javax.swing.*;
@@ -16,6 +17,7 @@ public class ManualSchedulePanel extends JPanel {
     record Choice(int id,String label) { public String toString(){return label;} }
     private final ScheduleEditorService service=new ScheduleEditorService();
     private final Consumer<Integer> onSaved;
+    private final ScheduleFolderDAO folderDAO=new ScheduleFolderDAO();
     private ScheduleEditorService.Catalog catalog;
     private final JTextField name=new JTextField(18),year=new JTextField(10),semester=new JTextField(10),search=new JTextField(16);
     private final JComboBox<String> period=new JComboBox<>(new String[]{"Prelims","Midterms","Finals","Other"});
@@ -40,7 +42,8 @@ public class ManualSchedulePanel extends JPanel {
         super(new BorderLayout(0,8));this.onSaved=onSaved;setOpaque(false);
         JPanel top=new JPanel();top.setLayout(new BoxLayout(top,BoxLayout.Y_AXIS));top.setOpaque(false);
         JPanel meta=new JPanel(new GridLayout(2,2,12,6));meta.setOpaque(false);
-        meta.add(labeled("Name",name));meta.add(labeled("Period",period));meta.add(labeled("Academic year",year));meta.add(labeled("Semester",semester));top.add(meta);top.add(location);
+        meta.add(labeled("Name",name));meta.add(labeled("Period",period));meta.add(labeled("Academic year",year));meta.add(labeled("Semester",semester));top.add(meta);
+        JPanel destinationBar=BackgroundTask.bar();destinationBar.add(location);JButton changeDestination=new JButton("Change Destination");changeDestination.addActionListener(e->chooseDestination());destinationBar.add(changeDestination);top.add(destinationBar);
         JPanel filterBar=new JPanel(new GridLayout(1,4,8,0));filterBar.setOpaque(false);
         for(String label:List.of("Course","Room","Block","Faculty")) {JComboBox<Choice> box=new JComboBox<>();box.setPreferredSize(new Dimension(135,28));filters.add(box);filterBar.add(labeled(label,box));}
         JButton filter=new JButton("Filter"),find=new JButton("Search"),clear=new JButton("Clear Filters");
@@ -69,6 +72,14 @@ public class ManualSchedulePanel extends JPanel {
         period.addActionListener(e->changed());reset(null,"Root workspace");if (loadData) SwingUtilities.invokeLater(this::refreshChoices);
     }
     private void changed(){if(!loading){dirty=true;putClientProperty("dirty",true);status.setText("Unsaved changes");}}
+    private void chooseDestination(){
+        BackgroundTask.run(this,folderDAO::getAllFolders,folders->{
+            List<Object> options=new ArrayList<>();options.add(new Destination(null,"Root workspace"));options.addAll(folders.stream().map(f->new Destination(f.getId(),f.getName())).toList());
+            Destination selected=(Destination)JOptionPane.showInputDialog(this,"Save this schedule in:","Change Destination",JOptionPane.PLAIN_MESSAGE,null,options.toArray(),options.get(0));
+            if(selected!=null){folderId=selected.id();location.setText("Destination: "+selected.label());changed();}
+        });
+    }
+    private record Destination(Integer id,String label){public String toString(){return label;}}
     private static JPanel labeled(String label,JComponent input) {
         JPanel p=new JPanel(new BorderLayout(4,4));p.setOpaque(false);p.add(new JLabel(label+":"),BorderLayout.NORTH);p.add(input);return p;
     }
