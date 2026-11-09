@@ -25,6 +25,7 @@ CREATE TABLE courses (
     course_code VARCHAR(20) NOT NULL,
     course_title VARCHAR(100) NOT NULL,
     duration_hours FLOAT NOT NULL DEFAULT 0,
+    track VARCHAR(50) NOT NULL DEFAULT 'General',
     PRIMARY KEY (id)
 ) ENGINE=InnoDB;
 
@@ -32,6 +33,7 @@ CREATE TABLE block_sections (
     id INT NOT NULL AUTO_INCREMENT,
     section_name VARCHAR(50) NOT NULL,
     student_count INT NOT NULL,
+    track VARCHAR(50) NOT NULL DEFAULT 'General',
     PRIMARY KEY (id)
 ) ENGINE=InnoDB;
 

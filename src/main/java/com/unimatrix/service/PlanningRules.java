@@ -8,6 +8,8 @@ import java.util.*;
 
 /** Availability exceptions replace weekly hours for their specific date. */
 public final class PlanningRules {
+    public static final int MAX_EXAMS_PER_DAY = 3;
+    public static final int MIN_GAP_MINUTES = 60;
     public record Window(int faculty, Integer weekday, LocalDate date, boolean available, LocalTime start, LocalTime end) { }
     public record Rules(List<Window> windows, Set<LocalDate> excluded, List<ExamSchedule> published) { }
     private PlanningRules() { }
@@ -42,11 +44,19 @@ public final class PlanningRules {
         return a.getExamDate().equals(b.getExamDate())&&ExamTimes.overlaps(a.getTimeSlot(),b.getTimeSlot())
                 &&(a.getRoomId()==b.getRoomId()||a.getBlockSectionId()==b.getBlockSectionId()||a.getFacultyId()==b.getFacultyId());
     }
+    public static boolean hasMinimumGap(ExamSchedule a, ExamSchedule b) {
+        if (!Objects.equals(a.getExamDate(), b.getExamDate())) return true;
+        var x = ExamTimes.interval(a.getTimeSlot());
+        var y = ExamTimes.interval(b.getTimeSlot());
+        return !x[1].plusMinutes(MIN_GAP_MINUTES).isAfter(y[0])
+                || !y[1].plusMinutes(MIN_GAP_MINUTES).isAfter(x[0]);
+    }
     public static void validate(Connection c,int id,List<ExamSchedule> exams,boolean publishing)throws SQLException {
         Rules rules=load(c,id);
         for(int i=0;i<exams.size();i++) {
             ExamSchedule e=exams.get(i);
             if(!available(rules,e))throw new IllegalArgumentException("Row "+(i+1)+": faculty unavailable or examination date excluded.");
+            if(publishing&&rules.published().stream().anyMatch(other->!hasMinimumGap(e,other)))throw new IllegalArgumentException("Row "+(i+1)+": exams must have at least "+MIN_GAP_MINUTES+" minutes between them and another published schedule.");
             if(publishing&&rules.published().stream().anyMatch(other->conflicts(e,other)))throw new IllegalArgumentException("Row "+(i+1)+": resource conflict with another published schedule.");
         }
     }

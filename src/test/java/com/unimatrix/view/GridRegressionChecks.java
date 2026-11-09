@@ -19,7 +19,7 @@ public final class GridRegressionChecks {
         check(model.getRowCount()==2,"two initial blank rows");
         var catalog=new ScheduleEditorService.Catalog(List.of(new Course(1,"CS1","OOP",1.5f),new Course(2,"CS2","SQL",1.5f)),List.of(new Room(1,"R1","A",50)),List.of(new BlockSection(1,"BSCS 1A",40)),List.of(new Faculty(1,"Faculty","Dept")));
         Method setCatalog=ManualSchedulePanel.class.getDeclaredMethod("setCatalog",ScheduleEditorService.Catalog.class);setCatalog.setAccessible(true);setCatalog.invoke(panel,catalog);
-        row(model,0,1,"8:00 AM");row(model,1,2,"9:30 AM");model.addRow(new Object[7]);
+        row(model,0,1,"8:00 AM");row(model,1,2,"10:30 AM");model.addRow(new Object[7]);
         check(model.getValueAt(0,6).equals("9:30 AM"),"selected end retained");check(model.isCellEditable(0,6),"end editable");
         check(panel.draft().exams().size()==2,"blank row ignored");
         ((JTextField)field(panel,"search")).setText("CS1");Method apply=ManualSchedulePanel.class.getDeclaredMethod("applyFilter");apply.setAccessible(true);apply.invoke(panel);
@@ -32,7 +32,7 @@ public final class GridRegressionChecks {
         check(table.getRowCount()==3,"invalid hidden rows revealed");
         model.setValueAt(null,1,4);((TableRowSorter<?>)table.getRowSorter()).toggleSortOrder(0);table.setRowSelectionInterval(0,1);button(panel,"Delete Record").doClick();check(model.getRowCount()==1,"multiple sorted rows deleted");
     }
-    private static void row(DefaultTableModel model,int row,int course,String start){Object[] values={new ManualSchedulePanel.Choice(course,"CS"+course),new ManualSchedulePanel.Choice(1,"R1"),new ManualSchedulePanel.Choice(1,"BSCS 1A"),new ManualSchedulePanel.Choice(1,"Faculty"),"2026-11-07",start,course==1?"9:30 AM":"11:00 AM"};for(int i=0;i<7;i++)model.setValueAt(values[i],row,i);}
+    private static void row(DefaultTableModel model,int row,int course,String start){Object[] values={new ManualSchedulePanel.Choice(course,"CS"+course),new ManualSchedulePanel.Choice(1,"R1"),new ManualSchedulePanel.Choice(1,"BSCS 1A"),new ManualSchedulePanel.Choice(1,"Faculty"),"2026-11-07",start,course==1?"9:30 AM":"1:00 PM"};for(int i=0;i<7;i++)model.setValueAt(values[i],row,i);}
     private static Object field(Object o,String name)throws Exception{Field f=o.getClass().getDeclaredField(name);f.setAccessible(true);return f.get(o);}
     private static JButton button(Container p,String text){for(Component c:p.getComponents()){if(c instanceof JButton b&&b.getText().equals(text))return b;if(c instanceof Container nested){JButton b=button(nested,text);if(b!=null)return b;}}return null;}
     private static void check(boolean result,String name){if(!result)throw new AssertionError(name);}
