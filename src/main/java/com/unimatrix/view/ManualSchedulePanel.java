@@ -25,6 +25,7 @@ public class ManualSchedulePanel extends JPanel {
     private final Set<Integer> invalid=new HashSet<>();
     private final JLabel status=new JLabel("New schedule"),location=new JLabel("Root workspace");
     private int scheduleId; private Integer folderId; private long revision; private boolean dirty,loading;
+    private List<Integer> lastSourceRows=List.of();
     private final JButton save=new JButton("Save Schedule"),saveAs=new JButton("Save As New");
     private final DefaultTableModel model=new DefaultTableModel(new String[]{"Course","Room","Block Section","Faculty","Exam Date","Start Time","End Time"},0) {
         public boolean isCellEditable(int r,int c){return true;}
@@ -160,11 +161,18 @@ public class ManualSchedulePanel extends JPanel {
         }
         if(!errors.isEmpty()){sorter.setRowFilter(null);table.repaint();throw new IllegalArgumentException(String.join("\n",errors));}
         if(exams.isEmpty())throw new IllegalArgumentException("Add at least one completed exam row.");
+        lastSourceRows=List.copyOf(sourceRows);
         return new ScheduleDocument(scheduleId,folderId,name.getText(),(String)period.getSelectedItem(),year.getText(),semester.getText(),revision,exams);
+    }
+    private String visibleRows(String message) {
+        if(message==null||lastSourceRows.isEmpty()) return message;
+        var match=java.util.regex.Pattern.compile("[Rr]ow (\\d+)").matcher(message); StringBuffer fixed=new StringBuffer();
+        while(match.find()) { int i=Integer.parseInt(match.group(1))-1; if(i>=0&&i<lastSourceRows.size()) match.appendReplacement(fixed,"Row "+(lastSourceRows.get(i)+1)); }
+        match.appendTail(fixed); return fixed.toString();
     }
     private void save(boolean asNew) {
         final ScheduleDocument d;
         try { d=draft(); } catch(RuntimeException ex) { BackgroundTask.error(this,ex);return; }
-        BackgroundTask.run(this,()->service.save(d,asNew),saved->{display(saved);status.setText("Saved. Export PDF from the selected schedule in Explorer.");onSaved.accept(saved.id());});
+        BackgroundTask.run(this,()->service.save(d,asNew),saved->{display(saved);status.setText("Saved. Export PDF from the selected schedule in Explorer.");onSaved.accept(saved.id());},ex->{Throwable cause=ex;while(cause.getCause()!=null)cause=cause.getCause();JOptionPane.showMessageDialog(this,visibleRows(cause.getMessage()),"Operation failed",JOptionPane.ERROR_MESSAGE);});
     }
 }
