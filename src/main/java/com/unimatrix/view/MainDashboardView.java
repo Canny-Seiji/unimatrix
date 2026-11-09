@@ -1,18 +1,42 @@
 package com.unimatrix.view;
 
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.FlowLayout;
+import java.awt.Image;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GridBagLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.EnumMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.ButtonGroup;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.ImageIcon;
+import javax.swing.UIManager;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.SwingConstants;
+import javax.swing.Timer;
+import javax.swing.border.EmptyBorder;
+
+import com.unimatrix.view.components.NavIcon;
 import com.unimatrix.view.components.SidebarButton;
 import com.unimatrix.view.theme.UniMatrixTheme;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-import java.util.EnumMap;
-import java.util.Map;
-
-/**
- * Application shell: dark sidebar + header + CardLayout workspace.
- * Other screens plug in through registerPage(); unregistered pages show a placeholder.
- */
+/** Application shell: sliding collapsible sidebar + header + CardLayout workspace. */
 public class MainDashboardView extends JFrame {
 
     private final CardLayout cardLayout = new CardLayout();
@@ -24,6 +48,16 @@ public class MainDashboardView extends JFrame {
     private final DashboardHomePanel home;
     private final Runnable onLogout;
     private JLabel headerIcon;
+
+    // Sliding sidebar components
+    private final JPanel sidebar = new JPanel(new BorderLayout());
+    private final Timer slideTimer;
+    private boolean isSidebarExpanded = false;
+    private final int COLLAPSED_WIDTH = 64;
+    private final int EXPANDED_WIDTH = 230;
+
+    private final Map<SidebarButton, String> buttonLabels = new LinkedHashMap<>();
+    private JButton toggleBtn;
 
     public MainDashboardView(String username, DashboardDataProvider provider, Runnable onLogout) {
         super("UniMatrix");
@@ -41,6 +75,8 @@ public class MainDashboardView extends JFrame {
         home = new DashboardHomePanel(provider, this::navigateTo);
 
         JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(UniMatrixTheme.CONTENT_BG);
+
         root.add(buildSidebar(), BorderLayout.WEST);
         root.add(buildMain(username), BorderLayout.CENTER);
         setContentPane(root);
@@ -58,9 +94,17 @@ public class MainDashboardView extends JFrame {
         }
 
         navigateTo(Page.DASHBOARD);
+
+        slideTimer = new Timer(10, e -> {
+            int current = sidebar.getPreferredSize().width;
+            int target = isSidebarExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH;
+            int next = current + Integer.signum(target - current) * Math.min(15, Math.abs(target - current));
+            sidebar.setPreferredSize(new Dimension(next, 0));
+            sidebar.revalidate();
+            if (next == target) ((Timer) e.getSource()).stop();
+        });
     }
 
-    /** Replaces the page (including the placeholder) with a real screen. */
     public void registerPage(Page page, JComponent component) {
         JComponent oldWrapper = wrappers.remove(page);
         if (oldWrapper != null) workspace.remove(oldWrapper);
@@ -73,8 +117,16 @@ public class MainDashboardView extends JFrame {
         workspace.repaint();
     }
 
+    @Override
+    public void dispose() {
+        if (slideTimer != null) slideTimer.stop();
+        super.dispose();
+    }
+
     public void navigateTo(Page page) {
-        navButtons.get(page).setSelected(true);
+        if (navButtons.containsKey(page)) {
+            navButtons.get(page).setSelected(true);
+        }
         pageTitle.setText(page.title());
         cardLayout.show(workspace, page.name());
         if (page == Page.DASHBOARD) home.refresh();
@@ -85,34 +137,59 @@ public class MainDashboardView extends JFrame {
     }
 
     private JPanel buildSidebar() {
-        JPanel sidebar = new JPanel(new BorderLayout());
-        sidebar.setBackground(UniMatrixTheme.SIDEBAR_BG);
-        sidebar.setPreferredSize(new Dimension(230, 0));
-        sidebar.setBorder(new EmptyBorder(24, 15, 20, 15));
+        sidebar.setBackground(UniMatrixTheme.SURFACE);
+        sidebar.setPreferredSize(new Dimension(COLLAPSED_WIDTH, 0));
+        sidebar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 0, 1, UniMatrixTheme.BORDER),
+                new EmptyBorder(24, 10, 20, 10)
+        ));
 
-        JLabel brand = new JLabel("UniMatrix");
-        brand.setFont(UniMatrixTheme.font(Font.BOLD, 20f));
-        brand.setForeground(Color.WHITE);
-        brand.setBorder(new EmptyBorder(0, 16, 24, 0));
+        toggleBtn = new JButton("", new NavIcon(NavIcon.Type.MENU));
+        toggleBtn.setIconTextGap(14);
+        toggleBtn.setToolTipText("Expand or collapse navigation");
+        toggleBtn.getAccessibleContext().setAccessibleName("Expand or collapse navigation");
+        styleToggleBrandButton(toggleBtn);
+        toggleBtn.addActionListener(e -> toggleSidebar());
+
+        JPanel brandWrapper = new JPanel(new BorderLayout());
+        brandWrapper.setOpaque(false);
+        brandWrapper.setBorder(new EmptyBorder(0, 0, 24, 0));
+        brandWrapper.add(toggleBtn, BorderLayout.CENTER);
 
         JPanel nav = new JPanel();
         nav.setOpaque(false);
         nav.setLayout(new BoxLayout(nav, BoxLayout.Y_AXIS));
+
+        Map<Page, NavIcon.Type> iconMap = Map.of(
+            Page.DASHBOARD, NavIcon.Type.DASHBOARD,
+            Page.MANAGE_DATA, NavIcon.Type.DATA,
+            Page.MANAGE_SCHEDULES, NavIcon.Type.SCHEDULE,
+            Page.ACCOUNT, NavIcon.Type.ACCOUNT
+        );
+
         for (Page p : Page.values()) {
-            SidebarButton b = new SidebarButton(p.title());
+            NavIcon.Type iconType = iconMap.getOrDefault(p, NavIcon.Type.DASHBOARD);
+            SidebarButton b = new SidebarButton(new NavIcon(iconType), "");
+            b.setToolTipText(p.title());
+            b.getAccessibleContext().setAccessibleName(p.title());
             b.addActionListener(e -> navigateTo(p));
             navGroup.add(b);
             navButtons.put(p, b);
             nav.add(b);
             nav.add(Box.createVerticalStrut(4));
+
+            buttonLabels.put(b, p.title());
         }
 
-        SidebarButton logout = new SidebarButton("Log out");
-        logout.addActionListener(e -> { logout.setSelected(false); confirmLogout(); });
+        SidebarButton logoutBtn = new SidebarButton(new NavIcon(NavIcon.Type.LOGOUT), "");
+        logoutBtn.setToolTipText("Log out");
+        logoutBtn.getAccessibleContext().setAccessibleName("Log out");
+        logoutBtn.addActionListener(e -> { logoutBtn.setSelected(false); confirmLogout(); });
+        buttonLabels.put(logoutBtn, "Log out");
 
-        sidebar.add(brand, BorderLayout.NORTH);
+        sidebar.add(brandWrapper, BorderLayout.NORTH);
         sidebar.add(nav, BorderLayout.CENTER);
-        sidebar.add(logout, BorderLayout.SOUTH);
+        sidebar.add(logoutBtn, BorderLayout.SOUTH);
         return sidebar;
     }
 
@@ -131,6 +208,37 @@ public class MainDashboardView extends JFrame {
         boolean unsaved = hasState(workspace, "dirty");
         return JOptionPane.showConfirmDialog(this, unsaved ? action + " Unsaved edits will be discarded." : action,
                 "UniMatrix", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION;
+    }
+
+    private void toggleSidebar() {
+        isSidebarExpanded = !isSidebarExpanded;
+
+        toggleBtn.setText(isSidebarExpanded ? "UniMatrix" : "");
+
+        for (Map.Entry<SidebarButton, String> entry : buttonLabels.entrySet()) {
+            entry.getKey().setText(isSidebarExpanded ? entry.getValue() : "");
+        }
+
+        slideTimer.start();
+    }
+
+    private void styleToggleBrandButton(JButton btn) {
+        btn.setFont(UniMatrixTheme.font(Font.BOLD, 15f));
+        btn.setForeground(UniMatrixTheme.TEXT);
+        btn.setHorizontalAlignment(SwingConstants.LEFT);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        btn.setPreferredSize(new Dimension(200, 40));
+
+        // Matches SidebarButton styling and margin for alignment
+        UniMatrixTheme.style(btn,
+                "background:" + UniMatrixTheme.hex(UniMatrixTheme.SURFACE)
+                + "; foreground:" + UniMatrixTheme.hex(UniMatrixTheme.TEXT)
+                + "; hoverBackground:#F1F5F9"
+                + "; pressedBackground:#E2E8F0"
+                + "; borderWidth:0; focusWidth:0; arc:8; margin:8,13,8,13");
+
     }
 
     private void confirmLogout() {

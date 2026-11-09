@@ -1,5 +1,8 @@
 package com.unimatrix.view;
 
+import com.unimatrix.view.components.UnderlineTabs;
+import com.unimatrix.view.components.Card;
+import com.unimatrix.view.theme.UniMatrixTheme;
 import com.unimatrix.dao.EntityDataDAO;
 import com.unimatrix.dao.EntityDataDAO.*;
 import javax.swing.*;
@@ -14,8 +17,12 @@ import java.util.Set;
 public class ManageDataPanel extends JPanel {
     public ManageDataPanel() {
         super(new BorderLayout());setOpaque(false);
-        JTabbedPane tabs=new JTabbedPane();
-        for(Kind kind:Kind.values()) tabs.addTab(kind.label,new EntityGrid(kind));
+        UnderlineTabs tabs=new UnderlineTabs();
+        for(Kind kind:new Kind[]{Kind.ROOM,Kind.BLOCK,Kind.COURSE,Kind.FACULTY}) {
+            Card card=new Card(new BorderLayout());
+            card.add(new EntityGrid(kind));
+            tabs.addTab(kind.label,card);
+        }
         add(tabs);
     }
     private static final class EntityGrid extends JPanel {
@@ -34,9 +41,13 @@ public class ManageDataPanel extends JPanel {
                     return c;
                 }
             };
-            table.putClientProperty("terminateEditOnFocusLost",true);table.setRowHeight(30);table.setAutoCreateRowSorter(true);
+            table.putClientProperty("terminateEditOnFocusLost",true);table.setRowHeight(32);
+            table.setFont(UniMatrixTheme.font(Font.PLAIN,12f));
+            table.getTableHeader().setFont(UniMatrixTheme.font(Font.BOLD,12f));
+            table.getTableHeader().setBackground(new Color(0xF8FAFC));
+            table.setGridColor(UniMatrixTheme.BORDER);table.setShowGrid(true);table.setAutoCreateRowSorter(true);
             model.addTableModelListener(e->{if(!loading){dirty=true;putClientProperty("dirty",true);invalid.clear();status.setText("Unsaved changes");}});
-            JButton add=new JButton("+"),delete=new JButton("Delete Record"),save=new JButton("Save Changes"),reload=new JButton("Reload");
+            JButton add=new JButton("+"),delete=new JButton("Delete Record"),save=UniMatrixTheme.primaryButton("Save Changes"),reload=new JButton("Reload");
             add.setToolTipText("Add a blank record");
             add.addActionListener(e->{if(BackgroundTask.finishEdit(table)) model.addRow(new Object[model.getColumnCount()]);});
             delete.addActionListener(e->{

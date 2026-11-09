@@ -1,5 +1,8 @@
 package com.unimatrix.view;
 
+import com.unimatrix.view.components.UnderlineTabs;
+import com.unimatrix.view.components.Card;
+import com.unimatrix.view.theme.UniMatrixTheme;
 import com.unimatrix.dao.*;
 import com.unimatrix.model.*;
 import com.unimatrix.service.*;
@@ -18,7 +21,7 @@ public class ManageSchedulesPanel extends JPanel {
     private final ScheduleFolderDAO folders=new ScheduleFolderDAO();
     private final ExamScheduleDAO exams=new ExamScheduleDAO();
     private final ScheduleEditorService service=new ScheduleEditorService();
-    private final JTabbedPane tabs=new JTabbedPane();
+    private final UnderlineTabs tabs=new UnderlineTabs();
     private final JPanel explorer=new JPanel(new BorderLayout(0,8));
     private final DefaultMutableTreeNode root=new DefaultMutableTreeNode("Exam Workspaces");
     private final DefaultTreeModel treeModel=new DefaultTreeModel(root);
@@ -44,14 +47,18 @@ public class ManageSchedulesPanel extends JPanel {
         tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
         tree.setRowHeight(26);tree.setShowsRootHandles(true);tree.addTreeSelectionListener(e->{updateButtons();loadRows();});
         tree.addMouseListener(new MouseAdapter(){public void mouseClicked(MouseEvent e){if(e.getClickCount()==2)openSelected();}});
+        table.setFont(UniMatrixTheme.font(Font.PLAIN,12f));
+        table.getTableHeader().setFont(UniMatrixTheme.font(Font.BOLD,12f));
+        table.getTableHeader().setBackground(new Color(0xF8FAFC));
+        table.setGridColor(UniMatrixTheme.BORDER);
         PlannerControls.stripes(table);table.setRowHeight(32);table.setAutoCreateRowSorter(true);table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         for(int i=0;i<table.getColumnCount();i++)table.getColumnModel().getColumn(i).setPreferredWidth(i==0?170:i==3?160:140);
-        JPanel left=new JPanel(new BorderLayout());left.add(new JScrollPane(tree));left.setMinimumSize(new Dimension(180,100));
-        JPanel right=new JPanel(new BorderLayout(0,8));right.add(scope,BorderLayout.NORTH);right.add(new JScrollPane(table));
+        JPanel left=new Card(new BorderLayout());left.add(new JScrollPane(tree));left.setMinimumSize(new Dimension(180,100));
+        JPanel right=new Card(new BorderLayout(0,8));right.add(scope,BorderLayout.NORTH);right.add(new JScrollPane(table));
         JPanel searchBar=BackgroundTask.bar();JTextField search=new JTextField(20);JButton searchBtn=new JButton("Search"),clear=new JButton("Clear");searchBar.add(new JLabel("Search displayed schedules:"));searchBar.add(search);searchBar.add(searchBtn);searchBar.add(clear);
         Runnable filter=()->((TableRowSorter<?>)table.getRowSorter()).setRowFilter(search.getText().isBlank()?null:RowFilter.regexFilter("(?i)"+java.util.regex.Pattern.quote(search.getText().trim())));
         searchBtn.addActionListener(e->filter.run());search.addActionListener(e->filter.run());clear.addActionListener(e->{search.setText("");filter.run();});right.add(searchBar,BorderLayout.SOUTH);
-        JSplitPane split=new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,left,right);split.setDividerLocation(240);split.setResizeWeight(.2);
+        JSplitPane split=new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,left,right);split.setDividerLocation(240);split.setResizeWeight(.2);split.setBorder(null);split.setOpaque(false);split.setDividerSize(8);
         explorer.add(actions,BorderLayout.NORTH);explorer.add(split,BorderLayout.CENTER);
         tabs.addTab("Schedules",explorer);tabs.addTab("Auto-Generate Config",automatic);tabs.addTab("Manual Encoding",manual);tabs.addTab("Availability & Dates",new AvailabilityPanel());add(tabs);updateButtons();SwingUtilities.invokeLater(this::refresh);
     }
