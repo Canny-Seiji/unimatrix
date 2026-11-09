@@ -1,0 +1,44 @@
+UniMatrix GUI update
+
+This project uses friend_new_version.zip as its functional base and restores
+the interface from my_old_backup.zip.
+
+Interface changes
+- Blue split-panel login, including both Sign In and Create Account.
+- White collapsible sidebar with icons, tooltips, and blue selected items.
+- Dashboard calendar, examination timeline, metric cards, and quick actions.
+- Full-width underline tabs on Manage Data and Manage Schedules.
+- White cards and matching table/header styling.
+
+Preserved functionality
+All DAO, model, service, and SQL files are byte-for-byte identical to the
+friend's new version. Authentication, account creation, data validation and
+saving, scheduling, history, publication, trash/restore, PDF export, and the
+Availability & Dates page retain the new version's existing implementation.
+
+The backup contained unresolved merge conflicts and some sample-only panels.
+Its interface was adapted around the working editors. The dashboard's new
+read-only calendar and timeline use the existing saved-examination query;
+the backup's fictional examinations and tasks are not used.
+
+Build and run
+Use Java 21 and Maven as specified in the original pom.xml.
+Run: mvn clean test
+Then run com.unimatrix.App from your IDE with Maven dependencies available.
+Keep using your existing database connection configuration and database.
+
+Generated target/ files are omitted to prevent stale compiled interfaces
+from taking precedence over the updated source. Rebuild after extracting.
+
+Verification performed
+- All 33 backend/database files verified unchanged against the new ZIP.
+- Java source compilation checked with Java 17, using temporary compile-only
+  FlatLaf API stand-ins because the FlatLaf dependency could not be downloaded
+  in the editing environment. These stand-ins are not in this project.
+- Existing planning regression checks: 20 passed.
+- Existing manual-grid regression checks: 10 passed.
+- Additional headless interface checks: 19 passed, including navigation,
+  hidden dirty/busy state, real examination display, and login control layout.
+- Login and dashboard panels rendered and inspected at multiple sizes.
+
+A full Java 21/Maven build with actual FlatLaf and live MySQL was not run here.

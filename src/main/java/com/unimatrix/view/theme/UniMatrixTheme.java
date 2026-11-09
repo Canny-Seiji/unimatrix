@@ -1,11 +1,18 @@
 package com.unimatrix.view.theme;
 
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Font;
+import java.awt.GraphicsEnvironment;
+import java.util.Arrays;
+
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.UIManager;
+
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.FlatLightLaf;
-
-import javax.swing.*;
-import java.awt.*;
-import java.util.Arrays;
 
 /** Central place for FlatLaf setup, palette, fonts and style helpers. Call install() once, before any UI is created. */
 public final class UniMatrixTheme {
@@ -81,9 +88,21 @@ public final class UniMatrixTheme {
         return b;
     }
 
+    // Alias for secondaryButton to prevent method reference collisions
+    public static JButton button(String text) {
+        return secondaryButton(text);
+    }
+
     public static JLabel title(String text) {
         JLabel l = new JLabel(text);
         l.setFont(font(Font.BOLD, 22f));
+        l.setForeground(TEXT);
+        return l;
+    }
+
+    public static JLabel bold(String text) {
+        JLabel l = new JLabel(text);
+        l.setFont(font(Font.BOLD, 13f));
         l.setForeground(TEXT);
         return l;
     }
