@@ -30,11 +30,12 @@ public final class FeatureRegressionChecks {
         reject(()->ExplicitPlanner.generate(requirements,rooms,blocks,sat,sat,LocalTime.of(7,0),LocalTime.of(8,0),rules),"all requirements must fit");
         reject(()->ExplicitPlanner.generate(List.of(requirements.get(0),requirements.get(0)),rooms,blocks,sat,sat,LocalTime.of(7,0),LocalTime.of(21,0),rules),"duplicate requirements");
         var live=new PlanningRules.Rules(windows,Set.of(),List.of(exam("07:00 - 08:00")));
-        var after=ExplicitPlanner.generate(List.of(requirements.get(0)),rooms,blocks,sat,sat,LocalTime.of(7,0),LocalTime.of(21,0),live);check(ExamTimes.interval(after.get(0).getTimeSlot())[0].equals(LocalTime.of(8,0)),"planner avoids published bookings");
+        var after=ExplicitPlanner.generate(List.of(requirements.get(0)),rooms,blocks,sat,sat,LocalTime.of(7,0),LocalTime.of(21,0),live);check(ExamTimes.interval(after.get(0).getTimeSlot())[0].equals(LocalTime.of(9,0)),"planner leaves a one-hour gap after published bookings");
         var courses=Map.of(1,new Course(1,"CS","Title",99));var roomMap=Map.of(1,rooms.get(0));var blockMap=Map.of(1,blocks.get(0));
         ScheduleValidator.validate(List.of(exam("07:00 - 08:30")),courses,roomMap,blockMap,Set.of(1));checks++;
         reject(()->ScheduleValidator.validate(List.of(exam("06:30 - 08:00")),courses,roomMap,blockMap,Set.of(1)),"manual starts before seven");
         reject(()->ScheduleValidator.validate(List.of(exam("20:00 - 21:30")),courses,roomMap,blockMap,Set.of(1)),"manual ends after nine");
+        reject(()->ScheduleValidator.validate(List.of(exam("07:00 - 08:00"),exam("09:00 - 10:00")),courses,roomMap,blockMap,Set.of(1)),"manual requires one-hour gap");
         System.out.println("Planning regression checks passed: "+checks);
     }
     static void check(boolean ok,String message){if(!ok)throw new AssertionError(message);checks++;}

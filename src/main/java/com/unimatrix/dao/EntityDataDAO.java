@@ -9,10 +9,10 @@ public class EntityDataDAO {
     public enum Kind {
         ROOM("Rooms", "rooms", "room_id", new String[]{"room_name", "building", "capacity"},
                 new String[]{"Room Name", "Building", "Capacity"}, new int[]{50,50,0}),
-        COURSE("Courses", "courses", "course_id", new String[]{"course_code", "course_title"},
-                new String[]{"Course Code", "Course Title"}, new int[]{20,100}),
-        BLOCK("Block Sections", "block_sections", "block_section_id", new String[]{"section_name", "student_count"},
-                new String[]{"Section Name", "Students"}, new int[]{50,0}),
+        COURSE("Courses", "courses", "course_id", new String[]{"course_code", "course_title", "track"},
+                new String[]{"Course Code", "Course Title", "Track"}, new int[]{20,100,50}),
+        BLOCK("Block Sections", "block_sections", "block_section_id", new String[]{"section_name", "student_count", "track"},
+                new String[]{"Section Name", "Students", "Track"}, new int[]{50,0,50}),
         FACULTY("Faculty", "faculty", "faculty_id", new String[]{"faculty_name", "department"},
                 new String[]{"Faculty Name", "Department"}, new int[]{100,50});
         public final String label, table, foreignKey;

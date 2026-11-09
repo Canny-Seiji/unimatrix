@@ -26,6 +26,7 @@ CREATE TABLE `block_sections` (
   `id` int NOT NULL AUTO_INCREMENT,
   `section_name` varchar(50) NOT NULL,
   `student_count` int NOT NULL,
+  `track` varchar(50) NOT NULL DEFAULT 'General',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -36,7 +37,7 @@ CREATE TABLE `block_sections` (
 
 LOCK TABLES `block_sections` WRITE;
 /*!40000 ALTER TABLE `block_sections` DISABLE KEYS */;
-INSERT INTO `block_sections` VALUES (1,'TN01',30),(2,'TN02',35),(3,'TN03',40),(4,'TN04',40),(5,'TN05',35),(7,'TN06',29),(8,'TN21',40),(9,'TN22',20),(10,'TN23',15),(11,'TN24',40),(12,'TN25',25),(13,'TN26',32);
+INSERT INTO `block_sections` VALUES (1,'TN01',30,'General'),(2,'TN02',35,'General'),(3,'TN03',40,'General'),(4,'TN04',40,'General'),(5,'TN05',35,'General'),(7,'TN06',29,'General'),(8,'TN21',40,'General'),(9,'TN22',20,'General'),(10,'TN23',15,'General'),(11,'TN24',40,'General'),(12,'TN25',25,'General'),(13,'TN26',32,'General');
 /*!40000 ALTER TABLE `block_sections` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -52,6 +53,7 @@ CREATE TABLE `courses` (
   `course_code` varchar(20) NOT NULL,
   `course_title` varchar(100) NOT NULL,
   `duration_hours` float NOT NULL DEFAULT '0',
+  `track` varchar(50) NOT NULL DEFAULT 'General',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -62,7 +64,7 @@ CREATE TABLE `courses` (
 
 LOCK TABLES `courses` WRITE;
 /*!40000 ALTER TABLE `courses` DISABLE KEYS */;
-INSERT INTO `courses` VALUES (1,'CCS0021','Information Management (LEC)',0),(2,'CCS0021L','Information Management (LAB)',0),(3,'CS0001','Discrete Structures 1',0),(4,'CS0003','Computer Systems & Architecture (LEC)',0),(5,'CS0003L','Computer Systems & Architecture (LAB)',0),(6,'CS0070','Object Oriented Programming (LEC)',0),(7,'CS0070L','Object Oriented Programming (LAB)',0),(8,'GED0021','Specialized English Program 2',0),(9,'GED0075','Linear Algebra',0),(10,'GED0081','College Physics 1 (LEC)',0),(11,'GED0081L','College Physics 1 (LAB)',0),(12,'CCS0001','Introduction to Computing (LEC)',0),(13,'CCS0001L','Introduction to Computing (LAB)',0),(14,'CCS0003','Computer Programming (LEC)',0),(15,'CCS0003L','Computer Programming (Lab',0),(16,'GED0004','Physical Education 1',0),(17,'GED0006','Personal and Professional Effectiveness',0),(18,'GED0009','Readings in Philippine History',0),(19,'GED0011','Science, Technology and Society',0);
+INSERT INTO `courses` VALUES (1,'CCS0021','Information Management (LEC)',0,'General'),(2,'CCS0021L','Information Management (LAB)',0,'General'),(3,'CS0001','Discrete Structures 1',0,'General'),(4,'CS0003','Computer Systems & Architecture (LEC)',0,'General'),(5,'CS0003L','Computer Systems & Architecture (LAB)',0,'General'),(6,'CS0070','Object Oriented Programming (LEC)',0,'General'),(7,'CS0070L','Object Oriented Programming (LAB)',0,'General'),(8,'GED0021','Specialized English Program 2',0,'General'),(9,'GED0075','Linear Algebra',0,'General'),(10,'GED0081','College Physics 1 (LEC)',0,'General'),(11,'GED0081L','College Physics 1 (LAB)',0,'General'),(12,'CCS0001','Introduction to Computing (LEC)',0,'General'),(13,'CCS0001L','Introduction to Computing (LAB)',0,'General'),(14,'CCS0003','Computer Programming (LEC)',0,'General'),(15,'CCS0003L','Computer Programming (Lab',0,'General'),(16,'GED0004','Physical Education 1',0,'General'),(17,'GED0006','Personal and Professional Effectiveness',0,'General'),(18,'GED0009','Readings in Philippine History',0,'General'),(19,'GED0011','Science, Technology and Society',0,'General');
 /*!40000 ALTER TABLE `courses` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -105,7 +107,7 @@ CREATE TABLE `exam_schedules` (
 
 LOCK TABLES `exam_schedules` WRITE;
 /*!40000 ALTER TABLE `exam_schedules` DISABLE KEYS */;
-INSERT INTO `exam_schedules` VALUES (49,12,5,3,8,'2026-09-22','07:00 - 10:00','07:00:00','10:00:00',6),(50,18,6,4,12,'2026-09-23','07:00 - 09:00','07:00:00','09:00:00',6),(51,19,6,4,13,'2026-09-23','09:00 - 10:30','09:00:00','10:30:00',6),(52,13,5,3,8,'2026-09-23','10:00 - 13:00','10:00:00','13:00:00',6),(53,14,5,3,9,'2026-09-24','13:00 - 15:30','13:00:00','15:30:00',6),(54,15,5,3,9,'2026-09-25','15:30 - 18:00','15:30:00','18:00:00',6),(55,16,5,3,10,'2026-09-25','18:00 - 20:00','18:00:00','20:00:00',6),(56,17,5,3,11,'2026-09-29','07:00 - 08:30','07:00:00','08:30:00',6),(57,12,5,3,8,'2026-09-08','10:00 - 13:00','10:00:00','13:00:00',7),(58,18,7,3,12,'2026-11-04','15:00 - 17:00','15:00:00','17:00:00',7),(59,19,8,3,13,'2026-11-06','09:00 - 10:00','09:00:00','10:00:00',7),(60,13,5,3,8,'2026-11-04','10:00 - 13:00','10:00:00','13:00:00',7),(61,14,6,3,9,'2026-11-06','10:00 - 11:00','10:00:00','11:00:00',7),(62,15,6,3,9,'2026-11-05','10:00 - 12:30','10:00:00','12:30:00',7),(63,16,9,3,10,'2026-11-07','07:00 - 09:00','07:00:00','09:00:00',7),(64,17,5,3,11,'2026-11-06','07:00 - 08:30','07:00:00','08:30:00',7),(76,1,5,11,1,'2026-11-10','07:00 - 09:30','07:00:00','09:30:00',8),(77,2,5,11,1,'2026-11-10','09:30 - 12:30','09:30:00','12:30:00',8),(78,3,5,11,2,'2026-11-10','12:30 - 14:30','12:30:00','14:30:00',8),(79,4,5,11,3,'2026-11-10','14:30 - 17:00','14:30:00','17:00:00',8),(80,5,5,11,3,'2026-11-10','17:00 - 20:00','17:00:00','20:00:00',8),(81,6,5,11,4,'2026-11-11','07:00 - 09:30','07:00:00','09:30:00',8),(82,7,5,11,4,'2026-11-11','09:30 - 12:30','09:30:00','12:30:00',8),(83,8,5,11,5,'2026-11-11','12:30 - 14:00','12:30:00','14:00:00',8),(84,9,5,11,6,'2026-11-11','14:00 - 16:00','14:00:00','16:00:00',8),(85,10,5,11,7,'2026-11-11','16:00 - 18:30','16:00:00','18:30:00',8),(86,11,5,11,7,'2026-11-12','07:00 - 10:00','07:00:00','10:00:00',8);
+INSERT INTO `exam_schedules` VALUES (49,12,5,3,8,'2026-09-22','07:00 - 10:00','07:00:00','10:00:00',6),(50,18,6,4,12,'2026-09-23','07:00 - 09:00','07:00:00','09:00:00',6),(51,19,6,4,13,'2026-09-23','10:00 - 11:30','10:00:00','11:30:00',6),(52,13,5,3,8,'2026-09-23','12:30 - 15:30','12:30:00','15:30:00',6),(53,14,5,3,9,'2026-09-24','13:00 - 15:30','13:00:00','15:30:00',6),(54,15,5,3,9,'2026-09-25','15:30 - 18:00','15:30:00','18:00:00',6),(55,16,5,3,10,'2026-09-25','19:00 - 21:00','19:00:00','21:00:00',6),(56,17,5,3,11,'2026-09-29','07:00 - 08:30','07:00:00','08:30:00',6),(57,12,5,3,8,'2026-09-08','10:00 - 13:00','10:00:00','13:00:00',7),(58,18,7,3,12,'2026-11-04','15:00 - 17:00','15:00:00','17:00:00',7),(59,19,8,3,13,'2026-11-06','09:00 - 10:00','09:00:00','10:00:00',7),(60,13,5,3,8,'2026-11-04','10:00 - 13:00','10:00:00','13:00:00',7),(61,14,6,3,9,'2026-11-06','11:00 - 12:00','11:00:00','12:00:00',7),(62,15,6,3,9,'2026-11-05','10:00 - 12:30','10:00:00','12:30:00',7),(63,16,9,3,10,'2026-11-07','07:00 - 09:00','07:00:00','09:00:00',7),(64,17,5,3,11,'2026-11-06','13:00 - 14:30','13:00:00','14:30:00',7),(76,1,5,11,1,'2026-11-10','07:00 - 09:30','07:00:00','09:30:00',8),(77,2,5,11,1,'2026-11-10','10:30 - 13:30','10:30:00','13:30:00',8),(78,3,5,11,2,'2026-11-10','14:30 - 16:30','14:30:00','16:30:00',8),(79,4,5,11,3,'2026-11-11','07:00 - 09:30','07:00:00','09:30:00',8),(80,5,5,11,3,'2026-11-11','10:30 - 13:30','10:30:00','13:30:00',8),(81,6,5,11,4,'2026-11-11','14:30 - 17:00','14:30:00','17:00:00',8),(82,7,5,11,4,'2026-11-12','07:00 - 10:00','07:00:00','10:00:00',8),(83,8,5,11,5,'2026-11-12','11:00 - 12:30','11:00:00','12:30:00',8),(84,9,5,11,6,'2026-11-12','13:30 - 15:30','13:30:00','15:30:00',8),(85,10,5,11,7,'2026-11-13','07:00 - 09:30','07:00:00','09:30:00',8),(86,11,5,11,7,'2026-11-13','10:30 - 13:30','10:30:00','13:30:00',8);
 /*!40000 ALTER TABLE `exam_schedules` ENABLE KEYS */;
 UNLOCK TABLES;
 

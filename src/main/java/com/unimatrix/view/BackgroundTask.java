@@ -10,6 +10,9 @@ import java.util.function.Consumer;
 final class BackgroundTask {
     private BackgroundTask() { }
     static <T> void run(JComponent owner, Callable<T> work, Consumer<T> success) {
+        run(owner, work, success, ex -> { Throwable cause=ex; while(cause.getCause()!=null) cause=cause.getCause(); JOptionPane.showMessageDialog(owner,cause.getMessage(),"Operation failed",JOptionPane.ERROR_MESSAGE); });
+    }
+    static <T> void run(JComponent owner, Callable<T> work, Consumer<T> success, Consumer<Exception> failure) {
         if(Boolean.TRUE.equals(owner.getClientProperty("busy"))) return;
         owner.putClientProperty("busy",true);
         Map<Component,Boolean> enabled=new IdentityHashMap<>(); freeze(owner,enabled);
@@ -19,11 +22,7 @@ final class BackgroundTask {
             protected void done() {
                 enabled.forEach(Component::setEnabled); owner.putClientProperty("busy",false); owner.setCursor(Cursor.getDefaultCursor());
                 try { success.accept(get()); }
-                catch(Exception ex) {
-                    Throwable cause=ex;
-                    while(cause.getCause()!=null) cause=cause.getCause();
-                    JOptionPane.showMessageDialog(owner,cause.getMessage(),"Operation failed",JOptionPane.ERROR_MESSAGE);
-                }
+                catch(Exception ex) { failure.accept(ex); }
             }
         }.execute();
     }

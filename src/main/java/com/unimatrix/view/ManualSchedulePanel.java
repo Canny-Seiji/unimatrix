@@ -25,6 +25,7 @@ public class ManualSchedulePanel extends JPanel {
     private final Set<Integer> invalid=new HashSet<>();
     private final JLabel status=new JLabel("New schedule"),location=new JLabel("Root workspace");
     private int scheduleId; private Integer folderId; private long revision; private boolean dirty,loading;
+    private List<Integer> lastSourceRows=List.of();
     private final JButton save=new JButton("Save Schedule"),saveAs=new JButton("Save As New");
     private final DefaultTableModel model=new DefaultTableModel(new String[]{"Course","Room","Block Section","Faculty","Exam Date","Start Time","End Time"},0) {
         public boolean isCellEditable(int r,int c){return true;}
@@ -103,7 +104,7 @@ public class ManualSchedulePanel extends JPanel {
         List<List<Choice>> choices=List.of(loaded.courses().stream().map(x->new Choice(x.getId(),x.toString())).toList(),loaded.rooms().stream().map(x->new Choice(x.getId(),x.toString())).toList(),loaded.blocks().stream().map(x->new Choice(x.getId(),x.toString())).toList(),loaded.faculty().stream().map(x->new Choice(x.getId(),x.toString())).toList());
         loading=true;
         for(int col=0;col<4;col++) {
-            JComboBox<Choice> edit=new JComboBox<>();edit.addItem(null);choices.get(col).forEach(edit::addItem);table.getColumnModel().getColumn(col).setCellEditor(new DefaultCellEditor(edit));
+            if(col<1 || col==2) table.getColumnModel().getColumn(col).setCellEditor(new TrackEditor(col==0)); else {JComboBox<Choice> edit=new JComboBox<>();edit.addItem(null);choices.get(col).forEach(edit::addItem);table.getColumnModel().getColumn(col).setCellEditor(new DefaultCellEditor(edit));}
             Choice selected=(Choice)filters.get(col).getSelectedItem();filters.get(col).removeAllItems();filters.get(col).addItem(new Choice(0,"All"));choices.get(col).forEach(filters.get(col)::addItem);
             if(selected!=null)for(Choice choice:choices.get(col))if(choice.id()==selected.id())filters.get(col).setSelectedItem(choice);
             for(int r=0;r<model.getRowCount();r++)if(model.getValueAt(r,col) instanceof Choice old) {
@@ -113,6 +114,7 @@ public class ManualSchedulePanel extends JPanel {
         }
         loading=false;table.repaint();
     }
+    private final class TrackEditor extends AbstractCellEditor implements TableCellEditor { final boolean course; final JComboBox<Choice> box=new JComboBox<>(); TrackEditor(boolean course){this.course=course;} public Object getCellEditorValue(){return box.getSelectedItem();} public Component getTableCellEditorComponent(JTable t,Object v,boolean s,int row,int col){box.removeAllItems();box.addItem(null);int r=t.convertRowIndexToModel(row);Course c=null;BlockSection b=null;if(model.getValueAt(r,0) instanceof Choice x)c=catalog.courses().stream().filter(y->y.getId()==x.id()).findFirst().orElse(null);if(model.getValueAt(r,2) instanceof Choice x)b=catalog.blocks().stream().filter(y->y.getId()==x.id()).findFirst().orElse(null);final Course selectedCourse=c;final BlockSection selectedBlock=b;if(course)catalog.courses().stream().filter(x->TrackChoices.compatible(x,selectedBlock)).map(x->new Choice(x.getId(),x.toString())).forEach(box::addItem);else catalog.blocks().stream().filter(x->TrackChoices.compatible(selectedCourse,x)).map(x->new Choice(x.getId(),x.toString())).forEach(box::addItem);box.setSelectedItem(v);return box;}}
     private Choice choice(int column,int id,String fallback) {
         JComboBox<Choice> box=filters.get(column);for(int i=1;i<box.getItemCount();i++)if(box.getItemAt(i).id()==id)return box.getItemAt(i);
         return id==0?null:new Choice(id,fallback==null?"[Missing #"+id+"]":fallback);
@@ -153,15 +155,24 @@ public class ManualSchedulePanel extends JPanel {
             }catch(RuntimeException ex){invalid.add(r);errors.add("Row "+(r+1)+": "+ex.getMessage());}
         }
         if(errors.isEmpty())try{ScheduleEditorService.validate(exams,catalog);}catch(IllegalArgumentException ex){
-            java.util.regex.Matcher match=java.util.regex.Pattern.compile("[Rr]ow (\\d+)").matcher(ex.getMessage());while(match.find()){int i=Integer.parseInt(match.group(1))-1;if(i>=0&&i<sourceRows.size())invalid.add(sourceRows.get(i));}errors.add(ex.getMessage());
+            String message=ex.getMessage(); java.util.regex.Matcher match=java.util.regex.Pattern.compile("[Rr]ow (\\d+)").matcher(message); StringBuffer fixed=new StringBuffer();
+            while(match.find()){int i=Integer.parseInt(match.group(1))-1;if(i>=0&&i<sourceRows.size()){invalid.add(sourceRows.get(i));match.appendReplacement(fixed,"Row "+(sourceRows.get(i)+1));}}
+            match.appendTail(fixed);errors.add(fixed.length()==0?message:fixed.toString());
         }
         if(!errors.isEmpty()){sorter.setRowFilter(null);table.repaint();throw new IllegalArgumentException(String.join("\n",errors));}
         if(exams.isEmpty())throw new IllegalArgumentException("Add at least one completed exam row.");
+        lastSourceRows=List.copyOf(sourceRows);
         return new ScheduleDocument(scheduleId,folderId,name.getText(),(String)period.getSelectedItem(),year.getText(),semester.getText(),revision,exams);
+    }
+    private String visibleRows(String message) {
+        if(message==null||lastSourceRows.isEmpty()) return message;
+        var match=java.util.regex.Pattern.compile("[Rr]ow (\\d+)").matcher(message); StringBuffer fixed=new StringBuffer();
+        while(match.find()) { int i=Integer.parseInt(match.group(1))-1; if(i>=0&&i<lastSourceRows.size()) match.appendReplacement(fixed,"Row "+(lastSourceRows.get(i)+1)); }
+        match.appendTail(fixed); return fixed.toString();
     }
     private void save(boolean asNew) {
         final ScheduleDocument d;
         try { d=draft(); } catch(RuntimeException ex) { BackgroundTask.error(this,ex);return; }
-        BackgroundTask.run(this,()->service.save(d,asNew),saved->{display(saved);status.setText("Saved. Export PDF from the selected schedule in Explorer.");onSaved.accept(saved.id());});
+        BackgroundTask.run(this,()->service.save(d,asNew),saved->{display(saved);status.setText("Saved. Export PDF from the selected schedule in Explorer.");onSaved.accept(saved.id());},ex->{Throwable cause=ex;while(cause.getCause()!=null)cause=cause.getCause();JOptionPane.showMessageDialog(this,visibleRows(cause.getMessage()),"Operation failed",JOptionPane.ERROR_MESSAGE);});
     }
 }

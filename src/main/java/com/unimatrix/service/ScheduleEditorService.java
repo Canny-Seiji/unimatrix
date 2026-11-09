@@ -16,10 +16,14 @@ public class ScheduleEditorService {
         EntityDataDAO dao=new EntityDataDAO();
         List<Course> courses=new ArrayList<>(); List<Room> rooms=new ArrayList<>();
         List<BlockSection> blocks=new ArrayList<>(); List<Faculty> faculty=new ArrayList<>();
-        for(var r:dao.load(c,EntityDataDAO.Kind.COURSE)) courses.add(new Course(r.id(),r.values().get(0),r.values().get(1),0));
+        for(var r:dao.load(c,EntityDataDAO.Kind.COURSE)) courses.add(new Course(r.id(),r.values().get(0),r.values().get(1),0,r.values().get(2)));
         for(var r:dao.load(c,EntityDataDAO.Kind.ROOM)) rooms.add(new Room(r.id(),r.values().get(0),r.values().get(1),Integer.parseInt(r.values().get(2))));
-        for(var r:dao.load(c,EntityDataDAO.Kind.BLOCK)) blocks.add(new BlockSection(r.id(),r.values().get(0),Integer.parseInt(r.values().get(1))));
+        for(var r:dao.load(c,EntityDataDAO.Kind.BLOCK)) blocks.add(new BlockSection(r.id(),r.values().get(0),Integer.parseInt(r.values().get(1)),r.values().get(2)));
         for(var r:dao.load(c,EntityDataDAO.Kind.FACULTY)) faculty.add(new Faculty(r.id(),r.values().get(0),r.values().get(1)));
+        courses.sort(Comparator.comparing(Course::toString, String.CASE_INSENSITIVE_ORDER));
+        rooms.sort(Comparator.comparing(Room::toString, String.CASE_INSENSITIVE_ORDER));
+        blocks.sort(Comparator.comparing(BlockSection::toString, String.CASE_INSENSITIVE_ORDER));
+        faculty.sort(Comparator.comparing(Faculty::toString, String.CASE_INSENSITIVE_ORDER));
         return new Catalog(courses,rooms,blocks,faculty);
     }
     public static void validate(List<ExamSchedule> exams, Catalog catalog) {

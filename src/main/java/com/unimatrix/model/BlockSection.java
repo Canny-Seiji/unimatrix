@@ -4,11 +4,16 @@ public class BlockSection {
     private int id;
     private String sectionName;
     private int studentCount;
+    private String track;
 
     public BlockSection(int id, String sectionName, int studentCount) {
+        this(id, sectionName, studentCount, "General");
+    }
+    public BlockSection(int id, String sectionName, int studentCount, String track) {
         this.id = id;
         this.sectionName = sectionName;
         this.studentCount = studentCount;
+        this.track = track == null || track.isBlank() ? "General" : track;
     }
 
     public int getId() { return id; }
@@ -19,6 +24,8 @@ public class BlockSection {
 
     public int getStudentCount() { return studentCount; }
     public void setStudentCount(int studentCount) { this.studentCount = studentCount; }
+    public String getTrack() { return track; }
+    public void setTrack(String track) { this.track = track; }
 
     @Override
     public String toString() {

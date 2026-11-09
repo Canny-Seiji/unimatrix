@@ -70,7 +70,7 @@ public final class MySqlIntegrationChecks {
         catch(IllegalStateException expected){checks++;}
         WorkspaceService.trash(finals.id(),false);
         var courses=entities.load(EntityDataDAO.Kind.COURSE);
-        var renamedCourses=new ArrayList<>(courses);renamedCourses.set(0,new EntityDataDAO.Row(1,List.of("CS1","Object-oriented programming")));
+        var renamedCourses=new ArrayList<>(courses);renamedCourses.set(0,new EntityDataDAO.Row(1,List.of("CS1","Object-oriented programming","General")));
         entities.save(EntityDataDAO.Kind.COURSE,courses,renamedCourses);
         check(entities.load(EntityDataDAO.Kind.COURSE).get(0).values().get(1).equals("Object-oriented programming"),"master edit with trashed references succeeds");
         var deletedFolder=WorkspaceService.items(true).stream().filter(x->x.folder()&&x.id()==folder.getId()).findFirst().orElseThrow();
