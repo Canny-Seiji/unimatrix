@@ -60,7 +60,7 @@ public class ManageSchedulesPanel extends JPanel {
         searchBtn.addActionListener(e->filter.run());search.addActionListener(e->filter.run());clear.addActionListener(e->{search.setText("");filter.run();});right.add(searchBar,BorderLayout.SOUTH);
         JSplitPane split=new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,left,right);split.setDividerLocation(240);split.setResizeWeight(.2);split.setBorder(null);split.setOpaque(false);split.setDividerSize(8);
         explorer.add(actions,BorderLayout.NORTH);explorer.add(split,BorderLayout.CENTER);
-        tabs.addTab("Schedules",explorer);tabs.addTab("Auto-Generate Config",automatic);tabs.addTab("Manual Encoding",manual);tabs.addTab("Availability & Dates",new AvailabilityPanel());add(tabs);updateButtons();SwingUtilities.invokeLater(this::refresh);
+        tabs.addTab("Schedules",explorer);tabs.addTab("Auto-Generate Config",automatic);tabs.addTab("Manual Encoding",manual);add(tabs);updateButtons();SwingUtilities.invokeLater(this::refresh);
     }
     private record TreeData(List<ScheduleFolder> folders,List<ScheduleFile> files) { }
     public void refresh(){refresh(null);}

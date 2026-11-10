@@ -13,8 +13,8 @@ Interface changes
 Preserved functionality
 All DAO, model, service, and SQL files are byte-for-byte identical to the
 friend's new version. Authentication, account creation, data validation and
-saving, scheduling, history, publication, trash/restore, PDF export, and the
-Availability & Dates page retain the new version's existing implementation.
+saving, scheduling, history, publication, trash/restore, and PDF export retain
+the new version's existing implementation.
 
 The backup contained unresolved merge conflicts and some sample-only panels.
 Its interface was adapted around the working editors. The dashboard's new
