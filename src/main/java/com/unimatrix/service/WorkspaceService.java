@@ -1,5 +1,6 @@
 package com.unimatrix.service;
-import com.unimatrix.dao.*;
+import com.unimatrix.dao.DatabaseConnection;
+import com.unimatrix.dao.Transactions;
 import java.sql.*;
 import java.util.*;
 
@@ -25,11 +26,25 @@ public final class WorkspaceService {
             for(Item i:all)if(!i.folder()&&(!folder&&i.id()==id||folder&&i.parent()!=null&&folders.contains(i.parent()))){ScheduleHistory.capture(c,ScheduleEditorService.read(c,i.id()),"Before deletion");try(PreparedStatement p=c.prepareStatement("UPDATE schedule_files SET deleted=TRUE,published=FALSE,revision=revision+1 WHERE id=?")){p.setInt(1,i.id());p.executeUpdate();}}
             for(int fid:folders)try(PreparedStatement p=c.prepareStatement("UPDATE schedule_folders SET deleted=TRUE WHERE id=?")){p.setInt(1,fid);p.executeUpdate();}return null;});
     }
-    public static void recover(Item item)throws SQLException {
-        Transactions.write(c->{List<Item> deleted=items(c,true),active=items(c,false);Item actual=deleted.stream().filter(x->x.id()==item.id()&&x.folder()==item.folder()).findFirst().orElseThrow(()->new IllegalArgumentException("Item is no longer in Trash."));
+    public static int recover(Item item)throws SQLException {
+        return Transactions.write(c->{List<Item> deleted=items(c,true),active=items(c,false);Item actual=deleted.stream().filter(x->x.id()==item.id()&&x.folder()==item.folder()).findFirst().orElseThrow(()->new IllegalArgumentException("Item is no longer in Trash."));
             Integer parent=actual.parent();if(parent!=null&&active.stream().noneMatch(x->x.folder()&&x.id()==parent))throw new IllegalArgumentException("Restore the parent folder first.");
+            int cleared=0;
+            if(!item.folder()) {
+                List<Integer> conflicted=new ArrayList<>();
+                String conflict="SELECT DISTINCT deletedExam.id FROM exam_schedules deletedExam "
+                        +"JOIN exam_schedules activeExam ON activeExam.schedule_id<>deletedExam.schedule_id "
+                        +"AND activeExam.exam_date=deletedExam.exam_date AND (activeExam.room_id=deletedExam.room_id OR activeExam.block_section_id=deletedExam.block_section_id) "
+                        +"AND activeExam.start_time<deletedExam.end_time AND activeExam.end_time>deletedExam.start_time "
+                        +"JOIN schedule_files activeFile ON activeFile.id=activeExam.schedule_id AND activeFile.deleted=FALSE "
+                        +"WHERE deletedExam.schedule_id=? AND deletedExam.exam_date IS NOT NULL "
+                        +"AND deletedExam.room_id IS NOT NULL AND deletedExam.start_time IS NOT NULL AND deletedExam.end_time IS NOT NULL";
+                try(PreparedStatement p=c.prepareStatement(conflict)){p.setInt(1,item.id());try(ResultSet r=p.executeQuery()){while(r.next())conflicted.add(r.getInt(1));}}
+                cleared=conflicted.size();
+                try(PreparedStatement p=c.prepareStatement("UPDATE exam_schedules SET room_id=NULL,exam_date=NULL,time_slot=NULL,start_time=NULL,end_time=NULL WHERE id=?")){for(int id:conflicted){p.setInt(1,id);p.addBatch();}p.executeBatch();}
+            }
             // Restore one item at a time. Children remain in Trash until explicitly selected.
-            try(PreparedStatement p=c.prepareStatement("UPDATE "+(item.folder()?"schedule_folders":"schedule_files")+" SET deleted=FALSE"+(item.folder()?"":",published=FALSE,revision=revision+1")+" WHERE id=?")){p.setInt(1,item.id());p.executeUpdate();}return null;});
+            try(PreparedStatement p=c.prepareStatement("UPDATE "+(item.folder()?"schedule_folders":"schedule_files")+" SET deleted=FALSE"+(item.folder()?"":",published=FALSE,revision=revision+1")+" WHERE id=?")){p.setInt(1,item.id());p.executeUpdate();}return cleared;});
     }
     public static void permanentlyDelete(Item item)throws SQLException {
         Transactions.write(c->{

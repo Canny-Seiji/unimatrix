@@ -1,6 +1,5 @@
 package com.unimatrix.service;
 
-import com.unimatrix.dao.*;
 import com.unimatrix.model.*;
 import java.sql.*;
 import java.time.*;
@@ -19,7 +18,7 @@ public final class PlanningRules {
             while(r.next()) windows.add(new Window(r.getInt("faculty_id"),(Integer)r.getObject("weekday"),r.getDate("exception_date")==null?null:r.getDate("exception_date").toLocalDate(),r.getBoolean("available"),r.getTime("start_time").toLocalTime(),r.getTime("end_time").toLocalTime()));
         }
         try(Statement s=c.createStatement();ResultSet r=s.executeQuery("SELECT exam_date FROM excluded_dates")){while(r.next())excluded.add(r.getDate(1).toLocalDate());}
-        try(PreparedStatement s=c.prepareStatement("SELECT e.* FROM exam_schedules e JOIN schedule_files f ON f.id=e.schedule_id WHERE f.published=TRUE AND f.deleted=FALSE AND f.id<>?")) {
+        try(PreparedStatement s=c.prepareStatement("SELECT e.* FROM exam_schedules e JOIN schedule_files f ON f.id=e.schedule_id WHERE f.deleted=FALSE AND f.id<>?")) {
             s.setInt(1,exceptSchedule);try(ResultSet r=s.executeQuery()){while(r.next()) published.add(new ExamSchedule(r.getInt("id"),r.getInt("course_id"),r.getInt("room_id"),r.getInt("block_section_id"),r.getInt("faculty_id"),r.getDate("exam_date").toLocalDate(),r.getString("time_slot")));}
         }
         return new Rules(windows,excluded,published);
@@ -42,7 +41,7 @@ public final class PlanningRules {
     }
     public static boolean conflicts(ExamSchedule a,ExamSchedule b) {
         return a.getExamDate().equals(b.getExamDate())&&ExamTimes.overlaps(a.getTimeSlot(),b.getTimeSlot())
-                &&(a.getRoomId()==b.getRoomId()||a.getBlockSectionId()==b.getBlockSectionId()||a.getFacultyId()==b.getFacultyId());
+                &&(a.getRoomId()==b.getRoomId()||a.getBlockSectionId()==b.getBlockSectionId());
     }
     public static boolean hasMinimumGap(ExamSchedule a, ExamSchedule b) {
         if (!Objects.equals(a.getExamDate(), b.getExamDate())) return true;
@@ -56,10 +55,11 @@ public final class PlanningRules {
         for(int i=0;i<exams.size();i++) {
             ExamSchedule e=exams.get(i);
             if(!available(rules,e))throw new IllegalArgumentException("Row "+(i+1)+": faculty unavailable or examination date excluded.");
-            if(publishing&&rules.published().stream().anyMatch(other->!hasMinimumGap(e,other)))throw new IllegalArgumentException("Row "+(i+1)+": exams must have at least "+MIN_GAP_MINUTES+" minutes between them and another published schedule.");
-            if(publishing&&rules.published().stream().anyMatch(other->conflicts(e,other)))throw new IllegalArgumentException("Row "+(i+1)+": resource conflict with another published schedule.");
+            if(rules.published().stream().anyMatch(other->sameResource(e,other)&&!hasMinimumGap(e,other)))throw new IllegalArgumentException("Row "+(i+1)+": the room or block section is scheduled too close to another active exam.");
+            if(rules.published().stream().anyMatch(other->conflicts(e,other)))throw new IllegalArgumentException("Row "+(i+1)+": resource conflict with another schedule.");
         }
     }
+    private static boolean sameResource(ExamSchedule a,ExamSchedule b){return a.getRoomId()==b.getRoomId()||a.getBlockSectionId()==b.getBlockSectionId();}
     public static boolean isPublished(Connection c,int id)throws SQLException {
         try(PreparedStatement p=c.prepareStatement("SELECT published FROM schedule_files WHERE id=? AND deleted=FALSE")){p.setInt(1,id);try(ResultSet r=p.executeQuery()){if(!r.next())throw new SQLException("Schedule is deleted or missing.");return r.getBoolean(1);}}
     }

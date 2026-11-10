@@ -121,12 +121,13 @@ public class ManualSchedulePanel extends JPanel {
     }
     private void display(ScheduleDocument d) {
         loading=true;scheduleId=d.id();folderId=d.folderId();revision=d.revision();name.setText(d.name());period.setSelectedItem(d.period());year.setText(d.academicYear());semester.setText(d.semester());
-        location.setText("Schedule #"+d.id());model.setRowCount(0);
+        location.setText("Schedule #"+d.id());model.setRowCount(0);invalid.clear();
         for(ExamSchedule e:d.exams()) {
             String start="",end="";try{var times=ExamTimes.interval(e.getTimeSlot());start=times[0].format(java.time.format.DateTimeFormatter.ofPattern("h:mm a",java.util.Locale.ENGLISH));end=times[1].format(java.time.format.DateTimeFormatter.ofPattern("h:mm a",java.util.Locale.ENGLISH));}catch(RuntimeException ignored){ }
-            model.addRow(new Object[]{choice(0,e.getCourseId(),e.getCourseCode()),choice(1,e.getRoomId(),e.getRoomName()),choice(2,e.getBlockSectionId(),e.getBlockSection()),choice(3,e.getFacultyId(),e.getFacultyName()),e.getExamDate()==null?"":e.getExamDate().toString(),start,end});
+            int row=model.getRowCount();model.addRow(new Object[]{choice(0,e.getCourseId(),e.getCourseCode()),choice(1,e.getRoomId(),e.getRoomName()),choice(2,e.getBlockSectionId(),e.getBlockSection()),choice(3,e.getFacultyId(),e.getFacultyName()),e.getExamDate()==null?"":e.getExamDate().toString(),start,end});
+            if(e.getRoomId()==0||e.getExamDate()==null||start.isBlank()||end.isBlank())invalid.add(row);
         }
-        model.addRow(new Object[7]);model.addRow(new Object[7]);clearFilters();loading=false;dirty=false;putClientProperty("dirty",false);invalid.clear();save.setText("Save Changes");saveAs.setEnabled(true);status.setText(d.exams().size()+" exams loaded.");
+        model.addRow(new Object[7]);model.addRow(new Object[7]);clearFilters();loading=false;dirty=false;putClientProperty("dirty",false);save.setText("Save Changes");saveAs.setEnabled(true);status.setText(d.exams().size()+" exams loaded.");
     }
     private boolean blank(int r) {for(int c=0;c<7;c++){Object v=model.getValueAt(r,c);if(v!=null&&!v.toString().isBlank())return false;}return true;}
     private void clearFilters(){search.setText("");for(var f:filters)if(f.getItemCount()>0)f.setSelectedIndex(0);sorter.setRowFilter(null);}
@@ -150,7 +151,7 @@ public class ManualSchedulePanel extends JPanel {
                 Choice[] choices=new Choice[4];for(int c=0;c<4;c++){choices[c]=(Choice)model.getValueAt(r,c);if(choices[c]==null)throw new IllegalArgumentException("Select course, room, block and faculty.");}
                 LocalDate date=LocalDate.parse(Objects.toString(model.getValueAt(r,4),"").trim());
                 LocalTime start=ExamTimes.parse(Objects.toString(model.getValueAt(r,5),""));
-                int courseId=choices[0].id();Course course=catalog.courses().stream().filter(x->x.getId()==courseId).findFirst().orElseThrow(()->new IllegalArgumentException("Course no longer exists."));
+                int courseId=choices[0].id();catalog.courses().stream().filter(x->x.getId()==courseId).findFirst().orElseThrow(()->new IllegalArgumentException("Course no longer exists."));
                 exams.add(new ExamSchedule(0,courseId,choices[1].id(),choices[2].id(),choices[3].id(),date,ExamTimes.slot(start,ExamTimes.parse(Objects.toString(model.getValueAt(r,6),"")))));sourceRows.add(r);
             }catch(RuntimeException ex){invalid.add(r);errors.add("Row "+(r+1)+": "+ex.getMessage());}
         }

@@ -35,14 +35,9 @@ public final class ScheduleValidator {
                 throw new IllegalArgumentException(prefix + "duplicate course-block exam in this schedule.");
             for (int j = 0; j < i; j++) {
                 ExamSchedule other = exams.get(j);
-                if (e.getExamDate().equals(other.getExamDate()) && !PlanningRules.hasMinimumGap(e, other))
-                    throw new IllegalArgumentException(prefix + "must have at least " + PlanningRules.MIN_GAP_MINUTES + " minutes between exams (row " + (j + 1) + ").");
-                if (e.getExamDate().equals(other.getExamDate()) && ExamTimes.overlaps(e.getTimeSlot(), other.getTimeSlot())) {
-                    String resource = e.getRoomId() == other.getRoomId() ? "room"
-                            : e.getBlockSectionId() == other.getBlockSectionId() ? "block section"
-                            : e.getFacultyId() == other.getFacultyId() ? "faculty" : null;
-                    if (resource != null) throw new IllegalArgumentException(prefix + resource + " overlaps row " + (j + 1) + ".");
-                }
+                if ((e.getRoomId() == other.getRoomId() || e.getBlockSectionId() == other.getBlockSectionId())
+                        && e.getExamDate().equals(other.getExamDate()) && !PlanningRules.hasMinimumGap(e, other))
+                    throw new IllegalArgumentException(prefix + "the room or block section is scheduled too close to row " + (j + 1) + ".");
             }
         }
     }

@@ -27,8 +27,8 @@ public final class ExplicitPlanner {
                         ExamSchedule candidate=e;
                         long daily=result.stream().filter(x->candidateDate.equals(x.getExamDate())).count();
                         boolean fitsDaily=daily < PlanningRules.MAX_EXAMS_PER_DAY
-                                && result.stream().filter(x->candidateDate.equals(x.getExamDate())).allMatch(x->PlanningRules.hasMinimumGap(candidate,x));
-                        boolean fitsPublished=rules.published().stream().allMatch(x->PlanningRules.hasMinimumGap(candidate,x));
+                                && result.stream().filter(x->x.getRoomId()==candidate.getRoomId()||x.getBlockSectionId()==candidate.getBlockSectionId()).allMatch(x->PlanningRules.hasMinimumGap(candidate,x));
+                        boolean fitsPublished=rules.published().stream().filter(x->x.getRoomId()==candidate.getRoomId()||x.getBlockSectionId()==candidate.getBlockSectionId()).allMatch(x->PlanningRules.hasMinimumGap(candidate,x));
                         if(fitsDaily&&fitsPublished&&PlanningRules.available(rules,candidate)&&result.stream().noneMatch(x->PlanningRules.conflicts(candidate,x))&&rules.published().stream().noneMatch(x->PlanningRules.conflicts(candidate,x))){placed=candidate;break;}
                     }
                 }

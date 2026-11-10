@@ -9,7 +9,7 @@ import java.util.function.Consumer;
 
 /** Minimal account screen for the current hardcoded-login flow. */
 final class AccountPanel extends JPanel {
-    private final Consumer<Void> onDeleted;private final Runnable onChanged;
+    @SuppressWarnings("unused") private final Consumer<Void> onDeleted;@SuppressWarnings("unused") private final Runnable onChanged;
     AccountPanel(String username, Consumer<Void> onDeleted, Runnable onChanged) {
         super(new GridBagLayout());
         this.onDeleted=onDeleted;this.onChanged=onChanged;
