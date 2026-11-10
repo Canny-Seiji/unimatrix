@@ -32,14 +32,17 @@ public final class WorkspaceService {
             int cleared=0;
             if(!item.folder()) {
                 List<Integer> conflicted=new ArrayList<>();
-                String conflict="SELECT DISTINCT deletedExam.id FROM exam_schedules deletedExam "
+                String conflict="SELECT deletedExam.id,deletedExam.start_time,deletedExam.end_time,activeExam.start_time,activeExam.end_time FROM exam_schedules deletedExam "
                         +"JOIN exam_schedules activeExam ON activeExam.schedule_id<>deletedExam.schedule_id "
                         +"AND activeExam.exam_date=deletedExam.exam_date AND (activeExam.room_id=deletedExam.room_id OR activeExam.block_section_id=deletedExam.block_section_id) "
-                        +"AND activeExam.start_time<deletedExam.end_time AND activeExam.end_time>deletedExam.start_time "
                         +"JOIN schedule_files activeFile ON activeFile.id=activeExam.schedule_id AND activeFile.deleted=FALSE "
                         +"WHERE deletedExam.schedule_id=? AND deletedExam.exam_date IS NOT NULL "
                         +"AND deletedExam.room_id IS NOT NULL AND deletedExam.start_time IS NOT NULL AND deletedExam.end_time IS NOT NULL";
-                try(PreparedStatement p=c.prepareStatement(conflict)){p.setInt(1,item.id());try(ResultSet r=p.executeQuery()){while(r.next())conflicted.add(r.getInt(1));}}
+                try(PreparedStatement p=c.prepareStatement(conflict)){p.setInt(1,item.id());try(ResultSet r=p.executeQuery()){while(r.next()){
+                    java.time.LocalTime deletedStart=r.getTime(2).toLocalTime(),deletedEnd=r.getTime(3).toLocalTime(),activeStart=r.getTime(4).toLocalTime(),activeEnd=r.getTime(5).toLocalTime();
+                    boolean gapOk=!deletedEnd.plusMinutes(PlanningRules.MIN_GAP_MINUTES).isAfter(activeStart)||!activeEnd.plusMinutes(PlanningRules.MIN_GAP_MINUTES).isAfter(deletedStart);
+                    if(!gapOk)conflicted.add(r.getInt(1));
+                }}}
                 cleared=conflicted.size();
                 try(PreparedStatement p=c.prepareStatement("UPDATE exam_schedules SET room_id=NULL,exam_date=NULL,time_slot=NULL,start_time=NULL,end_time=NULL WHERE id=?")){for(int id:conflicted){p.setInt(1,id);p.addBatch();}p.executeBatch();}
             }

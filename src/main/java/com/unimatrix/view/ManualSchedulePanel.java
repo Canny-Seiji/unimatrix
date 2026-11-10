@@ -67,7 +67,7 @@ public class ManualSchedulePanel extends JPanel {
         for(Component child:top.getComponents())if(child instanceof JComponent component)component.setAlignmentX(Component.LEFT_ALIGNMENT);
         JScrollPane scroll=new JScrollPane(table);scroll.setColumnHeaderView(table.getTableHeader());
         add(top,BorderLayout.NORTH);add(scroll,BorderLayout.CENTER);add(bottom,BorderLayout.SOUTH);
-        model.addTableModelListener(e->{if(!loading){dirty=true;putClientProperty("dirty",true);invalid.clear();status.setText("Unsaved changes");table.repaint();}});
+        model.addTableModelListener(e->{if(!loading){dirty=true;putClientProperty("dirty",true);if(e.getFirstRow()>=0)for(int row=e.getFirstRow();row<=e.getLastRow();row++)invalid.remove(row);status.setText("Unsaved changes");table.repaint();}});
         DocumentListener listener=new DocumentListener(){public void insertUpdate(DocumentEvent e){changed();}public void removeUpdate(DocumentEvent e){changed();}public void changedUpdate(DocumentEvent e){changed();}};
         name.getDocument().addDocumentListener(listener);year.getDocument().addDocumentListener(listener);semester.getDocument().addDocumentListener(listener);
         period.addActionListener(e->changed());reset(null,"Root workspace");if (loadData) SwingUtilities.invokeLater(this::refreshChoices);

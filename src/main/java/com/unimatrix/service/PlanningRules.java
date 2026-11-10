@@ -18,7 +18,7 @@ public final class PlanningRules {
             while(r.next()) windows.add(new Window(r.getInt("faculty_id"),(Integer)r.getObject("weekday"),r.getDate("exception_date")==null?null:r.getDate("exception_date").toLocalDate(),r.getBoolean("available"),r.getTime("start_time").toLocalTime(),r.getTime("end_time").toLocalTime()));
         }
         try(Statement s=c.createStatement();ResultSet r=s.executeQuery("SELECT exam_date FROM excluded_dates")){while(r.next())excluded.add(r.getDate(1).toLocalDate());}
-        try(PreparedStatement s=c.prepareStatement("SELECT e.* FROM exam_schedules e JOIN schedule_files f ON f.id=e.schedule_id WHERE f.deleted=FALSE AND f.id<>?")) {
+        try(PreparedStatement s=c.prepareStatement("SELECT e.* FROM exam_schedules e JOIN schedule_files f ON f.id=e.schedule_id WHERE f.deleted=FALSE AND f.id<>? AND e.exam_date IS NOT NULL AND e.time_slot IS NOT NULL AND e.room_id IS NOT NULL AND e.block_section_id IS NOT NULL")) {
             s.setInt(1,exceptSchedule);try(ResultSet r=s.executeQuery()){while(r.next()) published.add(new ExamSchedule(r.getInt("id"),r.getInt("course_id"),r.getInt("room_id"),r.getInt("block_section_id"),r.getInt("faculty_id"),r.getDate("exam_date").toLocalDate(),r.getString("time_slot")));}
         }
         return new Rules(windows,excluded,published);

@@ -14,6 +14,7 @@ import javax.swing.table.*;
 import javax.swing.tree.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.sql.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.List;
@@ -32,7 +33,7 @@ public class ManageSchedulesPanel extends JPanel {
     private final JTable table=new JTable(tableModel);
     private final JButton edit=new JButton("Open / Edit"),export=new JButton("Export PDF"),delete=new JButton("Delete");
     private final JLabel scope=new JLabel("Select a schedule to edit or export.");
-    private Integer conflictScheduleId,conflictFolderId;
+    private final Set<Integer> conflictScheduleIds=new HashSet<>(),conflictFolderIds=new HashSet<>();
     private final ManualSchedulePanel manual;
     private final AutoGeneratePanel automatic;
     private int loadSequence;
@@ -52,7 +53,7 @@ public class ManageSchedulesPanel extends JPanel {
             public Component getTreeCellRendererComponent(JTree t,Object value,boolean selected,boolean expanded,boolean leaf,int row,boolean hasFocus){
                 Component c=super.getTreeCellRendererComponent(t,value,selected,expanded,leaf,row,hasFocus);
                 Object object=((DefaultMutableTreeNode)value).getUserObject();
-                boolean conflict=object instanceof ScheduleFile fileNode&&Objects.equals(fileNode.getId(),conflictScheduleId)||object instanceof ScheduleFolder folderNode&&Objects.equals(folderNode.getId(),conflictFolderId);
+                boolean conflict=object instanceof ScheduleFile fileNode&&conflictScheduleIds.contains(fileNode.getId())||object instanceof ScheduleFolder folderNode&&conflictFolderIds.contains(folderNode.getId());
                 if(conflict&&!selected){c.setForeground(UniMatrixTheme.DANGER);c.setBackground(new Color(255,225,225));}
                 return c;
             }
@@ -74,11 +75,13 @@ public class ManageSchedulesPanel extends JPanel {
         explorer.add(actions,BorderLayout.NORTH);explorer.add(split,BorderLayout.CENTER);
         tabs.addTab("Schedules",explorer);tabs.addTab("Auto-Generate Config",automatic);tabs.addTab("Manual Encoding",manual);add(tabs);updateButtons();SwingUtilities.invokeLater(this::refresh);
     }
-    private record TreeData(List<ScheduleFolder> folders,List<ScheduleFile> files) { }
+    private record TreeData(List<ScheduleFolder> folders,List<ScheduleFile> files,Set<Integer> conflicts) { }
+    private Set<Integer> unresolvedScheduleIds() throws SQLException {Set<Integer> ids=new HashSet<>();try(Connection c=DatabaseConnection.getConnection();PreparedStatement p=c.prepareStatement("SELECT DISTINCT e.schedule_id FROM exam_schedules e JOIN schedule_files f ON f.id=e.schedule_id WHERE f.deleted=FALSE AND (e.exam_date IS NULL OR e.time_slot IS NULL OR e.room_id IS NULL)")){try(ResultSet r=p.executeQuery()){while(r.next())ids.add(r.getInt(1));}}return ids;}
     public void refresh(){refresh(null);}
     private void refresh(Integer selectId) {
         Object selected=selectedObject();
-        BackgroundTask.run(explorer,()->new TreeData(folders.getAllFolders(),folders.getAllFiles()),data->{
+        BackgroundTask.run(explorer,()->new TreeData(folders.getAllFolders(),folders.getAllFiles(),unresolvedScheduleIds()),data->{
+            conflictScheduleIds.clear();conflictScheduleIds.addAll(data.conflicts());conflictFolderIds.clear();Map<Integer,Integer> folderParents=new HashMap<>();for(ScheduleFolder f:data.folders())folderParents.put(f.getId(),f.getParentId());for(ScheduleFile f:data.files())if(conflictScheduleIds.contains(f.getId())){Integer parent=f.getFolderId();while(parent!=null&&conflictFolderIds.add(parent))parent=folderParents.get(parent);}
             DefaultMutableTreeNode replacement=new DefaultMutableTreeNode("Exam Workspaces");Map<Integer,DefaultMutableTreeNode> nodes=new HashMap<>();
             Map<Integer,Integer> parents=new HashMap<>();for(ScheduleFolder f:data.folders()){nodes.put(f.getId(),new DefaultMutableTreeNode(f));parents.put(f.getId(),f.getParentId());}
             for(ScheduleFolder f:data.folders()) {
@@ -103,7 +106,7 @@ public class ManageSchedulesPanel extends JPanel {
     private Integer selectedFolder(){Object o=selectedObject(); if(o instanceof ScheduleFolder f)return Integer.valueOf(f.getId()); if(o instanceof ScheduleFile f)return f.getFolderId(); return null;}
     private String selectedFolderLabel(){Object o=selectedObject();return o instanceof ScheduleFolder f?f.getName():o instanceof ScheduleFile f?(f.getFolderId()==null?"Root workspace":"Folder #"+f.getFolderId()):"Root workspace";}
     private void updateButtons(){boolean file=selectedObject() instanceof ScheduleFile;edit.setEnabled(file);export.setEnabled(file);delete.setEnabled(selectedObject() instanceof ScheduleFolder||file);}
-    private void saved(int id){if(Objects.equals(conflictScheduleId,id)){conflictScheduleId=null;conflictFolderId=null;tree.repaint();}refresh(id);tabs.setSelectedIndex(0);}
+    private void saved(int id){conflictScheduleIds.remove(id);refresh(id);tabs.setSelectedIndex(0);}
     private void openSelected(){if(selectedObject() instanceof ScheduleFile f){manual.open(f.getId());tabs.setSelectedIndex(2);}}
     private void loadRows() {
         int token=++loadSequence;DefaultMutableTreeNode node=(DefaultMutableTreeNode)tree.getLastSelectedPathComponent();
@@ -129,7 +132,7 @@ public class ManageSchedulesPanel extends JPanel {
     private void deleteSelected() {
         Object obj=selectedObject();if(!(obj instanceof ScheduleFile)&&!(obj instanceof ScheduleFolder))return;
         if(JOptionPane.showConfirmDialog(this,"Move '"+obj+"' and its contents to Trash?","Delete",JOptionPane.YES_NO_OPTION,JOptionPane.WARNING_MESSAGE)!=JOptionPane.YES_OPTION)return;
-        BackgroundTask.run(explorer,()->obj instanceof ScheduleFile f?folders.deleteFile(f.getId()):folders.deleteFolder(((ScheduleFolder)obj).getId()),ok->{if(!ok)throw new IllegalArgumentException("Item no longer exists.");boolean clear=obj instanceof ScheduleFile fileToClear&&Objects.equals(conflictScheduleId,fileToClear.getId())||obj instanceof ScheduleFolder folderToClear&&Objects.equals(conflictFolderId,folderToClear.getId());if(clear){conflictScheduleId=null;conflictFolderId=null;}refresh();});
+        BackgroundTask.run(explorer,()->obj instanceof ScheduleFile f?folders.deleteFile(f.getId()):folders.deleteFolder(((ScheduleFolder)obj).getId()),ok->{if(!ok)throw new IllegalArgumentException("Item no longer exists.");refresh();});
     }
     private void exportSelected() {
         if(!(selectedObject() instanceof ScheduleFile file))return;
@@ -144,7 +147,7 @@ public class ManageSchedulesPanel extends JPanel {
     private void renameMove(){WorkspaceService.Item selected=selectedItem();if(selected==null)return;BackgroundTask.run(explorer,()->WorkspaceService.items(false),items->{
         JTextField name=new JTextField(selected.name(),22);JComboBox<WorkspaceService.Item> destinations=new JComboBox<>();destinations.addItem(new WorkspaceService.Item(0,true,null,"Workspace root"));for(var item:items)if(item.folder())destinations.addItem(item);for(int i=0;i<destinations.getItemCount();i++)if(Objects.equals(selected.parent(),destinations.getItemAt(i).id()))destinations.setSelectedIndex(i);
         if(JOptionPane.showConfirmDialog(this,new Object[]{"Name",name,"Destination",destinations},"Rename / Move",JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION)return;var dest=(WorkspaceService.Item)destinations.getSelectedItem();String text=name.getText();BackgroundTask.run(explorer,()->{WorkspaceService.renameMove(selected,text,dest.id()==0?null:dest.id());return true;},ok->refresh());});}
-    private void restoreTrash(){BackgroundTask.run(explorer,()->WorkspaceService.items(true),items->{if(items.isEmpty()){JOptionPane.showMessageDialog(this,"Trash is empty.");return;}JComboBox<WorkspaceService.Item> choices=new JComboBox<>(items.toArray(WorkspaceService.Item[]::new));JButton recover=new JButton("Recover"),permanent=new JButton("Permanently Delete");JPanel panel=new JPanel(new BorderLayout(8,8));panel.add(new JLabel("Deleted schedules and folders:"),BorderLayout.NORTH);panel.add(choices,BorderLayout.CENTER);JPanel buttons=new JPanel();buttons.add(recover);buttons.add(permanent);panel.add(buttons,BorderLayout.SOUTH);JDialog dialog=new JOptionPane(panel,JOptionPane.PLAIN_MESSAGE,JOptionPane.DEFAULT_OPTION).createDialog(this,"Trash");recover.addActionListener(e->{var selected=(WorkspaceService.Item)choices.getSelectedItem();dialog.dispose();if(selected!=null)BackgroundTask.run(explorer,()->WorkspaceService.recover(selected),cleared->{if(cleared>0&&!selected.folder()){conflictScheduleId=selected.id();conflictFolderId=selected.parent();}refresh();if(cleared>0)JOptionPane.showMessageDialog(this,"The restored schedule has a conflicting error. Conflicting exam entries were cleared and highlighted in red.","Schedule Conflict",JOptionPane.WARNING_MESSAGE);});});permanent.addActionListener(e->{var selected=(WorkspaceService.Item)choices.getSelectedItem();if(selected==null)return;if(JOptionPane.showConfirmDialog(dialog,"Permanently delete "+selected+" and any trashed contents? This cannot be undone.","Confirm Permanent Deletion",JOptionPane.YES_NO_OPTION,JOptionPane.WARNING_MESSAGE)!=JOptionPane.YES_OPTION)return;dialog.dispose();BackgroundTask.run(explorer,()->{WorkspaceService.permanentlyDelete(selected);return true;},ok->refresh());});dialog.setVisible(true);});}
+    private void restoreTrash(){BackgroundTask.run(explorer,()->WorkspaceService.items(true),items->{if(items.isEmpty()){JOptionPane.showMessageDialog(this,"Trash is empty.");return;}JComboBox<WorkspaceService.Item> choices=new JComboBox<>(items.toArray(WorkspaceService.Item[]::new));JButton recover=new JButton("Recover"),permanent=new JButton("Permanently Delete");JPanel panel=new JPanel(new BorderLayout(8,8));panel.add(new JLabel("Deleted schedules and folders:"),BorderLayout.NORTH);panel.add(choices,BorderLayout.CENTER);JPanel buttons=new JPanel();buttons.add(recover);buttons.add(permanent);panel.add(buttons,BorderLayout.SOUTH);JDialog dialog=new JOptionPane(panel,JOptionPane.PLAIN_MESSAGE,JOptionPane.DEFAULT_OPTION).createDialog(this,"Trash");recover.addActionListener(e->{var selected=(WorkspaceService.Item)choices.getSelectedItem();dialog.dispose();if(selected!=null)BackgroundTask.run(explorer,()->WorkspaceService.recover(selected),cleared->{refresh();if(cleared>0)JOptionPane.showMessageDialog(this,"The restored schedule has a conflicting error. Conflicting exam entries were cleared and highlighted in red.","Schedule Conflict",JOptionPane.WARNING_MESSAGE);});});permanent.addActionListener(e->{var selected=(WorkspaceService.Item)choices.getSelectedItem();if(selected==null)return;if(JOptionPane.showConfirmDialog(dialog,"Permanently delete "+selected+" and any trashed contents? This cannot be undone.","Confirm Permanent Deletion",JOptionPane.YES_NO_OPTION,JOptionPane.WARNING_MESSAGE)!=JOptionPane.YES_OPTION)return;dialog.dispose();BackgroundTask.run(explorer,()->{WorkspaceService.permanentlyDelete(selected);return true;},ok->refresh());});dialog.setVisible(true);});}
     private void history(){if(!(selectedObject() instanceof ScheduleFile file))return;BackgroundTask.run(explorer,()->new Object[]{service.load(file.getId()),ScheduleHistory.list(file.getId())},data->{
         var current=(ScheduleDocument)data[0];@SuppressWarnings("unchecked") List<ScheduleHistory.Entry> entries=(List<ScheduleHistory.Entry>)data[1];if(entries.isEmpty()){JOptionPane.showMessageDialog(this,"No earlier saved revisions.");return;}var selected=(ScheduleHistory.Entry)JOptionPane.showInputDialog(this,"Restore which saved revision? Current data will be recorded before restoration.","Schedule history",JOptionPane.PLAIN_MESSAGE,null,entries.toArray(),entries.get(0));if(selected!=null)BackgroundTask.run(explorer,()->{ScheduleHistory.restore(file.getId(),selected.id(),current.revision());return true;},ok->refresh(file.getId()));});}
     private void publication(){if(!(selectedObject() instanceof ScheduleFile file))return;BackgroundTask.run(explorer,()->{try(var c=DatabaseConnection.getConnection()){return new Object[]{service.load(file.getId()),PlanningRules.isPublished(c,file.getId())};}},data->{var doc=(ScheduleDocument)data[0];boolean published=(Boolean)data[1];if(JOptionPane.showConfirmDialog(this,(published?"Unpublish":"Publish")+" this schedule? Publishing checks other published schedules.","Publication",JOptionPane.YES_NO_OPTION)!=JOptionPane.YES_OPTION)return;BackgroundTask.run(explorer,()->{ScheduleHistory.publication(file.getId(),!published,doc.revision());return true;},ok->{refresh(file.getId());JOptionPane.showMessageDialog(this,published?"Schedule is now a draft.":"Schedule published.");});});}
