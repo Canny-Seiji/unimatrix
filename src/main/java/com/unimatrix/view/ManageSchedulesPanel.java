@@ -42,9 +42,9 @@ public class ManageSchedulesPanel extends JPanel {
         manual=new ManualSchedulePanel(this::saved);
         automatic=new AutoGeneratePanel(this::saved);
         JPanel actions=BackgroundTask.bar();JButton addFolder=new JButton("New Folder"),newSchedule=new JButton("New Schedule"),refresh=new JButton("Refresh");
-        actions.add(addFolder);actions.add(newSchedule);actions.add(edit);actions.add(export);actions.add(delete);actions.add(refresh);
-        JButton rename=new JButton("Rename / Move"),history=new JButton("History / Undo"),trash=new JButton("Trash / Restore"),newManual=new JButton("New Manual");
-        actions.add(rename);actions.add(history);actions.add(trash);actions.add(newManual);
+        JButton rename=new JButton("Rename / Move"),history=new JButton("History / Undo"),trash=new JButton("Trash / Restore"),newManual=new JButton("New Manual Schedule");
+        actions.add(addFolder);actions.add(newSchedule);actions.add(newManual);actions.add(edit);actions.add(export);actions.add(delete);actions.add(refresh);
+        actions.add(rename);actions.add(history);actions.add(trash);
         rename.addActionListener(e->renameMove());history.addActionListener(e->history());trash.addActionListener(e->restoreTrash());newManual.addActionListener(e->{manual.newSchedule(selectedFolder(),selectedFolderLabel());tabs.setSelectedIndex(2);});
         addFolder.addActionListener(e->createFolder());newSchedule.addActionListener(e->{automatic.setDestination(selectedFolder(),selectedFolderLabel());tabs.setSelectedIndex(1);});
         refresh.addActionListener(e->refresh());edit.addActionListener(e->openSelected());export.addActionListener(e->exportSelected());delete.addActionListener(e->deleteSelected());
