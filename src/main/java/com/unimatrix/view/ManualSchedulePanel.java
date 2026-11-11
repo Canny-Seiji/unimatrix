@@ -57,6 +57,8 @@ public class ManualSchedulePanel extends JPanel {
         table.getColumnModel().getColumn(5).setCellEditor(PlannerControls.timeEditor());
         table.getColumnModel().getColumn(6).setCellEditor(PlannerControls.timeEditor());
         table.setRowHeight(32);table.setRowSorter(sorter);table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);table.putClientProperty("terminateEditOnFocusLost",true);
+        sorter.setComparator(5,ManualSchedulePanel::compareTimes);
+        sorter.setComparator(6,ManualSchedulePanel::compareTimes);
         int[] widths={240,190,160,200,130,120,120};for(int i=0;i<widths.length;i++)table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         JPanel bottom=BackgroundTask.bar();JButton add=new JButton("+"),delete=new JButton("Delete Record"),reload=new JButton("Refresh Choices");
         add.setToolTipText("Add a blank exam row");
@@ -131,6 +133,12 @@ public class ManualSchedulePanel extends JPanel {
     }
     private boolean blank(int r) {for(int c=0;c<7;c++){Object v=model.getValueAt(r,c);if(v!=null&&!v.toString().isBlank())return false;}return true;}
     private void clearFilters(){search.setText("");for(var f:filters)if(f.getItemCount()>0)f.setSelectedIndex(0);sorter.setRowFilter(null);}
+    private static int compareTimes(Object left,Object right) {
+        String a=Objects.toString(left,"").trim(),b=Objects.toString(right,"").trim();
+        if(a.isBlank()||b.isBlank())return a.isBlank()?(b.isBlank()?0:1):-1;
+        try{return ExamTimes.parse(a).compareTo(ExamTimes.parse(b));}
+        catch(RuntimeException ignored){return a.compareToIgnoreCase(b);}
+    }
     private void applyFilter() {
         if(!BackgroundTask.finishEdit(table))return;
         String term=search.getText().trim().toLowerCase(Locale.ROOT);int[] ids=filters.stream().mapToInt(f->f.getSelectedItem() instanceof Choice ch?ch.id():0).toArray();
