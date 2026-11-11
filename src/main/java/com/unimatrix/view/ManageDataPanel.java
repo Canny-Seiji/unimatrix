@@ -45,7 +45,13 @@ public class ManageDataPanel extends JPanel {
             table.setFont(UniMatrixTheme.font(Font.PLAIN,12f));
             table.getTableHeader().setFont(UniMatrixTheme.font(Font.BOLD,12f));
             table.getTableHeader().setBackground(new Color(0xF8FAFC));
-            table.setGridColor(UniMatrixTheme.BORDER);table.setShowGrid(true);table.setAutoCreateRowSorter(true);
+            table.setGridColor(UniMatrixTheme.BORDER);table.setShowGrid(true);
+            TableRowSorter<DefaultTableModel> sorter=new TableRowSorter<>(model);
+            sorter.setComparator(0,(left,right)->{
+                if(left==null||right==null)return left==null?(right==null?0:1):-1;
+                return Integer.compare(((Number)left).intValue(),((Number)right).intValue());
+            });
+            table.setRowSorter(sorter);
             model.addTableModelListener(e->{if(!loading){dirty=true;putClientProperty("dirty",true);invalid.clear();status.setText("Unsaved changes");}});
             JButton add=new JButton("+"),delete=new JButton("Delete Record"),save=UniMatrixTheme.primaryButton("Save Changes"),reload=new JButton("Reload");
             add.setToolTipText("Add a blank record");
