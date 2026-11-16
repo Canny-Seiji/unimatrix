@@ -80,20 +80,24 @@ public class EntityDataDAO {
                 if (next==null) try(PreparedStatement p=c.prepareStatement("DELETE FROM "+kind.table+" WHERE id=?")) {p.setInt(1,old.id());p.executeUpdate();}
             }
             for(Row row:normalized) {
-                if(row.id()>0 && !original.containsKey(row.id())) throw new IllegalArgumentException("Unknown record identity.");
-                if(row.equals(original.get(row.id()))) continue;
-                String sql = row.id()==0 ? "INSERT INTO "+kind.table+" ("+String.join(",",kind.columns)+") VALUES ("+String.join(",",Collections.nCopies(kind.columns.length,"?"))+")"
-                        : "UPDATE "+kind.table+" SET "+String.join(",",Arrays.stream(kind.columns).map(s->s+"=?").toList())+" WHERE id=?";
+                boolean restoringDeleted=row.id()>0&&!original.containsKey(row.id());
+                if(restoringDeleted&&current.containsKey(row.id())) throw new IllegalArgumentException("Unknown record identity.");
+                if(!restoringDeleted&&row.equals(original.get(row.id()))) continue;
+                String sql;
+                if(row.id()==0) sql="INSERT INTO "+kind.table+" ("+String.join(",",kind.columns)+") VALUES ("+String.join(",",Collections.nCopies(kind.columns.length,"?"))+")";
+                else if(restoringDeleted) sql="INSERT INTO "+kind.table+" (id,"+String.join(",",kind.columns)+") VALUES ("+String.join(",",Collections.nCopies(kind.columns.length+1,"?"))+")";
+                else sql="UPDATE "+kind.table+" SET "+String.join(",",Arrays.stream(kind.columns).map(s->s+"=?").toList())+" WHERE id=?";
                 try(PreparedStatement p=c.prepareStatement(sql)) {
+                    int parameter=1;
+                    if(restoringDeleted) p.setInt(parameter++,row.id());
                     for(int i=0;i<row.values().size();i++) {
-                        if(kind.limits[i]>0) p.setString(i+1,row.values().get(i));
-                        else p.setInt(i+1,Integer.parseInt(row.values().get(i)));
+                        if(kind.limits[i]>0) p.setString(parameter++,row.values().get(i));
+                        else p.setInt(parameter++,Integer.parseInt(row.values().get(i)));
                     }
-                    if(row.id()>0) p.setInt(row.values().size()+1,row.id());
+                    if(row.id()>0&&!restoringDeleted) p.setInt(parameter,row.id());
                     if(p.executeUpdate()!=1) throw new SQLException("Record was not saved.");
                 }
-            }
-            // Capacity/population edits must not invalidate active timetables. Trash is revalidated on save/publication.
+            }            // Capacity/population edits must not invalidate active timetables. Trash is revalidated on save/publication.
             if(kind!=Kind.FACULTY) for(int id:affectedSchedules) {
                 try { ScheduleEditorService.validateStored(c,id); }
                 catch(IllegalArgumentException ex) { throw new IllegalArgumentException("Change would invalidate schedule #"+id+": "+ex.getMessage(),ex); }
@@ -107,3 +111,4 @@ public class EntityDataDAO {
         return result;
     }
 }
+
