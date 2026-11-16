@@ -128,14 +128,6 @@ public class DashboardHomePanel extends JPanel {
         manage.addActionListener(
             e -> navigator.accept(Page.MANAGE_DATA)
         );
-
-        JButton export =
-            UniMatrixTheme.secondaryButton("Export timetable");
-
-        export.addActionListener(
-            e -> navigator.accept(Page.MANAGE_SCHEDULES)
-        );
-
         JPanel buttons = new JPanel(
             new GridLayout(0, 1, 0, 6)
         );
@@ -143,7 +135,6 @@ public class DashboardHomePanel extends JPanel {
 
         buttons.add(generate);
         buttons.add(manage);
-        buttons.add(export);
 
         card.add(heading, BorderLayout.NORTH);
         card.add(buttons, BorderLayout.CENTER);
@@ -190,3 +181,4 @@ public class DashboardHomePanel extends JPanel {
         }.execute();
     }
 }
+

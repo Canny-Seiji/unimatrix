@@ -12,11 +12,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 /** Existing and new records share the same grid. Each tab saves as one transaction. */
 public class ManageDataPanel extends JPanel {
     public ManageDataPanel() {
-        super(new BorderLayout());setOpaque(false);
+        super(new BorderLayout());setOpaque(false);ToolTipManager.sharedInstance().setInitialDelay(700);ToolTipManager.sharedInstance().setDismissDelay(5000);
         UnderlineTabs tabs=new UnderlineTabs();
         for(Kind kind:new Kind[]{Kind.ROOM,Kind.BLOCK,Kind.COURSE,Kind.FACULTY}) {
             Card card=new Card(new BorderLayout());
@@ -28,8 +30,8 @@ public class ManageDataPanel extends JPanel {
     private static final class EntityGrid extends JPanel {
         final Kind kind; final EntityDataDAO dao=new EntityDataDAO(); final DefaultTableModel model;
         final JTable table; final Set<Integer> invalid=new HashSet<>();
-        List<Row> original=List.of(); boolean dirty,loading,loaded;
-        final JLabel status=new JLabel("Loading records...");
+        List<Row> original=List.of(),lastSnapshot=List.of(); final Deque<List<Row>> undoHistory=new ArrayDeque<>(); boolean dirty,loading,loaded,restoring;
+        final JLabel status=new JLabel("Loading records..."); final JButton undo=new JButton("Undo Changes");
         EntityGrid(Kind kind) {
             super(new BorderLayout(0,8));this.kind=kind;setOpaque(false);
             String[] labels=new String[kind.labels.length+1];labels[0]="ID";System.arraycopy(kind.labels,0,labels,1,kind.labels.length);
@@ -52,9 +54,9 @@ public class ManageDataPanel extends JPanel {
                 return Integer.compare(((Number)left).intValue(),((Number)right).intValue());
             });
             table.setRowSorter(sorter);
-            model.addTableModelListener(e->{if(!loading){dirty=true;putClientProperty("dirty",true);invalid.clear();status.setText("Unsaved changes");}});
-            JButton add=new JButton("+"),delete=new JButton("Delete Record"),save=UniMatrixTheme.primaryButton("Save Changes"),reload=new JButton("Reload");
-            add.setToolTipText("Add a blank record");
+            JButton add=new JButton("+"),delete=new JButton("Delete Record"),save=UniMatrixTheme.primaryButton("Save Changes"),reload=new JButton("Reload");save.setToolTipText("Save Changes");reload.setToolTipText("Reload");
+            add.setToolTipText("Add");delete.setToolTipText("Delete Record");undo.setToolTipText("Undo unsaved changes in this tab");undo.setEnabled(false);
+            model.addTableModelListener(e->{if(!loading&&!restoring){List<Row> now=currentRows();if(!now.equals(lastSnapshot)&&!lastSnapshot.isEmpty())undoHistory.push(lastSnapshot);lastSnapshot=now;dirty=true;putClientProperty("dirty",true);undo.setEnabled(!undoHistory.isEmpty());invalid.clear();status.setText("Unsaved changes");}});
             add.addActionListener(e->{if(BackgroundTask.finishEdit(table)) model.addRow(new Object[model.getColumnCount()]);});
             delete.addActionListener(e->{
                 if(!BackgroundTask.finishEdit(table))return;
@@ -62,19 +64,25 @@ public class ManageDataPanel extends JPanel {
                 for(int i=rows.length-1;i>=0;i--)model.removeRow(rows[i]);
             });
             save.addActionListener(e->save());
-            reload.addActionListener(e->{if(!dirty||JOptionPane.showConfirmDialog(this,"Discard unsaved changes and reload?","Reload",JOptionPane.YES_NO_OPTION)==JOptionPane.YES_OPTION)reload();});
-            JPanel actions=BackgroundTask.bar();actions.add(add);actions.add(delete);actions.add(save);actions.add(reload);actions.add(status);
-            JPanel searchBar=BackgroundTask.bar();JTextField search=new JTextField(22);JButton find=new JButton("Search"),clear=new JButton("Clear Search");searchBar.add(search);searchBar.add(find);searchBar.add(clear);
+            reload.addActionListener(e->{if(!dirty||JOptionPane.showConfirmDialog(this,"Refresh database data while keeping local deletions?","Reload",JOptionPane.YES_NO_OPTION)==JOptionPane.YES_OPTION)reload();});undo.addActionListener(e->{if(!undoHistory.isEmpty()){restoring=true;displayRows(undoHistory.pop(),original);restoring=false;undo.setEnabled(!undoHistory.isEmpty());}});
+            JPanel actions=BackgroundTask.bar();actions.add(add);actions.add(delete);actions.add(save);actions.add(reload);actions.add(undo);actions.add(status);
+            JPanel searchBar=BackgroundTask.bar();JTextField search=new JTextField(22);JButton find=new JButton("Search"),clear=new JButton("Clear Search");find.setToolTipText("Search");clear.setToolTipText("Clear Search");searchBar.add(search);searchBar.add(find);searchBar.add(clear);
             Runnable filter=()->{if(BackgroundTask.finishEdit(table))((TableRowSorter<?>)table.getRowSorter()).setRowFilter(search.getText().isBlank()?null:RowFilter.orFilter(java.util.List.of(RowFilter.regexFilter("(?i)"+java.util.regex.Pattern.quote(search.getText().trim())),new RowFilter<Object,Integer>(){public boolean include(Entry<? extends Object,? extends Integer> entry){for(int c=0;c<entry.getValueCount();c++)if(!entry.getStringValue(c).isBlank())return false;return true;}})));};find.addActionListener(e->filter.run());search.addActionListener(e->filter.run());clear.addActionListener(e->{search.setText("");filter.run();});add(searchBar,BorderLayout.NORTH);
             add(new JScrollPane(table),BorderLayout.CENTER);add(actions,BorderLayout.SOUTH);
             SwingUtilities.invokeLater(this::reload);
         }
-        void reload(){BackgroundTask.run(this,()->dao.load(kind),this::display);}
-        void display(List<Row> rows) {
-            loading=true;original=rows;model.setRowCount(0);
+        void reload(){List<Row> current=currentRows();Set<Integer> locallyDeleted=new HashSet<>(original.stream().map(Row::id).toList());locallyDeleted.removeAll(current.stream().map(Row::id).toList());BackgroundTask.run(this,()->dao.load(kind),rows->{List<Row> visible=rows.stream().filter(r->!locallyDeleted.contains(r.id())).toList();displayRows(visible,rows);});}
+        void display(List<Row> rows) { displayRows(rows, rows); }
+        void displayRows(List<Row> rows, List<Row> baseline) {
+            loading=true;original=List.copyOf(baseline);model.setRowCount(0);
             for(Row r:rows){Object[] cells=new Object[model.getColumnCount()];cells[0]=r.id();for(int i=0;i<r.values().size();i++)cells[i+1]=r.values().get(i);model.addRow(cells);}
             for(int i=0;i<2;i++)model.addRow(new Object[model.getColumnCount()]);
-            loading=false;dirty=false;putClientProperty("dirty",false);loaded=true;invalid.clear();status.setText(rows.size()+" records. Blank rows are ignored.");
+            loading=false;dirty=false;putClientProperty("dirty",false);lastSnapshot=currentRows();undo.setEnabled(!undoHistory.isEmpty());loaded=true;invalid.clear();status.setText(rows.size()+" records. Blank rows are ignored.");
+        }
+        List<Row> currentRows() {
+            List<Row> rows=new ArrayList<>();
+            for(int r=0;r<model.getRowCount();r++){List<String> values=new ArrayList<>();boolean blank=true;for(int c=1;c<model.getColumnCount();c++){String value=java.util.Objects.toString(model.getValueAt(r,c),"").trim();values.add(value);if(!value.isBlank())blank=false;}if(blank)continue;Object id=model.getValueAt(r,0);rows.add(new Row(id instanceof Number?((Number)id).intValue():0,values));}
+            return rows;
         }
         void save() {
             if(!loaded){BackgroundTask.error(this,new IllegalArgumentException("Load records successfully before saving."));return;}
@@ -90,7 +98,20 @@ public class ManageDataPanel extends JPanel {
             table.repaint();
             if(!errors.isEmpty()){BackgroundTask.error(this,new IllegalArgumentException(String.join("\n",errors)));return;}
             List<Row> before=List.copyOf(original);
-            BackgroundTask.run(this,()->dao.save(kind,before,rows),saved->{display(saved);status.setText("All changes saved.");});
+            BackgroundTask.run(this,()->dao.save(kind,before,rows),saved->{display(saved);status.setText("All changes saved. Undo is available.");});
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+

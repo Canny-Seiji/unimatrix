@@ -32,7 +32,6 @@ public final class UnderlineTabs extends JPanel {
         button.setOpaque(true);
         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         button.setPreferredSize(new Dimension(0, 42));
-        button.setToolTipText(title);
         button.addActionListener(e -> setSelectedIndex(index));
         buttons.add(button);
         header.add(button);
@@ -63,3 +62,4 @@ public final class UnderlineTabs extends JPanel {
         }
     }
 }
+

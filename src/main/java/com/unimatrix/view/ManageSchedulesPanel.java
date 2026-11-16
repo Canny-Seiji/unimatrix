@@ -38,11 +38,11 @@ public class ManageSchedulesPanel extends JPanel {
     private final AutoGeneratePanel automatic;
     private int loadSequence;
     public ManageSchedulesPanel() {
-        super(new BorderLayout());setOpaque(false);explorer.setOpaque(false);
+        super(new BorderLayout());setOpaque(false);explorer.setOpaque(false);ToolTipManager.sharedInstance().setInitialDelay(700);ToolTipManager.sharedInstance().setDismissDelay(5000);
         manual=new ManualSchedulePanel(this::saved);
         automatic=new AutoGeneratePanel(this::saved);
-        JPanel actions=BackgroundTask.bar();JButton addFolder=new JButton("New Folder"),newSchedule=new JButton("New Schedule"),refresh=new JButton("Refresh");
-        JButton rename=new JButton("Rename / Move"),history=new JButton("History / Undo"),trash=new JButton("Trash / Restore"),newManual=new JButton("New Manual Schedule");
+        JPanel actions=BackgroundTask.bar();JButton addFolder=new JButton("New Folder"),newSchedule=new JButton("New Schedule"),refresh=new JButton("Refresh");addFolder.setToolTipText("New Folder");newSchedule.setToolTipText("New Schedule");refresh.setToolTipText("Refresh");edit.setToolTipText("Open / Edit");export.setToolTipText("Export PDF");delete.setToolTipText("Delete");
+        JButton rename=new JButton("Rename / Move"),history=new JButton("History / Undo"),trash=new JButton("Trash / Restore"),newManual=new JButton("New Manual Schedule");rename.setToolTipText("Rename / Move");history.setToolTipText("History / Undo");trash.setToolTipText("Trash / Restore");newManual.setToolTipText("New Manual Schedule");
         actions.add(addFolder);actions.add(newSchedule);actions.add(newManual);actions.add(edit);actions.add(export);actions.add(delete);actions.add(refresh);
         actions.add(rename);actions.add(history);actions.add(trash);
         rename.addActionListener(e->renameMove());history.addActionListener(e->history());trash.addActionListener(e->restoreTrash());newManual.addActionListener(e->{manual.newSchedule(selectedFolder(),selectedFolderLabel());tabs.setSelectedIndex(2);});
@@ -151,3 +151,4 @@ public class ManageSchedulesPanel extends JPanel {
     private void history(){if(!(selectedObject() instanceof ScheduleFile file))return;BackgroundTask.run(explorer,()->new Object[]{service.load(file.getId()),ScheduleHistory.list(file.getId())},data->{
         var current=(ScheduleDocument)data[0];@SuppressWarnings("unchecked") List<ScheduleHistory.Entry> entries=(List<ScheduleHistory.Entry>)data[1];if(entries.isEmpty()){JOptionPane.showMessageDialog(this,"No earlier saved revisions.");return;}var selected=(ScheduleHistory.Entry)JOptionPane.showInputDialog(this,"Restore which saved revision? Current data will be recorded before restoration.","Schedule history",JOptionPane.PLAIN_MESSAGE,null,entries.toArray(),entries.get(0));if(selected!=null)BackgroundTask.run(explorer,()->{ScheduleHistory.restore(file.getId(),selected.id(),current.revision());return true;},ok->refresh(file.getId()));});}
 }
+
