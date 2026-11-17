@@ -4,6 +4,9 @@ import com.unimatrix.view.components.UnderlineTabs;
 import com.unimatrix.view.components.Card;
 import com.unimatrix.view.theme.UniMatrixTheme;
 import com.unimatrix.dao.EntityDataDAO;
+import com.unimatrix.dao.DatabaseConnection;
+import com.unimatrix.dao.TrackTermDAO;
+import com.unimatrix.model.TrackTerm;
 import com.unimatrix.dao.EntityDataDAO.*;
 import javax.swing.*;
 import javax.swing.table.*;
@@ -17,12 +20,13 @@ import java.util.Deque;
 
 /** Existing and new records share the same grid. Each tab saves as one transaction. */
 public class ManageDataPanel extends JPanel {
-    public ManageDataPanel() {
+    public ManageDataPanel() { this(true); }
+    ManageDataPanel(boolean loadData) {
         super(new BorderLayout());setOpaque(false);ToolTipManager.sharedInstance().setInitialDelay(700);ToolTipManager.sharedInstance().setDismissDelay(5000);
         UnderlineTabs tabs=new UnderlineTabs();
         for(Kind kind:new Kind[]{Kind.ROOM,Kind.BLOCK,Kind.COURSE,Kind.FACULTY}) {
             Card card=new Card(new BorderLayout());
-            card.add(new EntityGrid(kind));
+            card.add(new EntityGrid(kind,loadData));
             tabs.addTab(kind.label,card);
         }
         add(tabs);
@@ -32,7 +36,7 @@ public class ManageDataPanel extends JPanel {
         final JTable table; final Set<Integer> invalid=new HashSet<>();
         List<Row> original=List.of(),lastSnapshot=List.of(); final Deque<List<Row>> undoHistory=new ArrayDeque<>(); boolean dirty,loading,loaded,restoring;
         final JLabel status=new JLabel("Loading records..."); final JButton undo=new JButton("Undo Changes");
-        EntityGrid(Kind kind) {
+        EntityGrid(Kind kind, boolean loadData) {
             super(new BorderLayout(0,8));this.kind=kind;setOpaque(false);
             String[] labels=new String[kind.labels.length+1];labels[0]="ID";System.arraycopy(kind.labels,0,labels,1,kind.labels.length);
             model=new DefaultTableModel(labels,0) { public boolean isCellEditable(int r,int c){return c>0;} };
@@ -69,9 +73,38 @@ public class ManageDataPanel extends JPanel {
             JPanel searchBar=BackgroundTask.bar();JTextField search=new JTextField(22);JButton find=new JButton("Search"),clear=new JButton("Clear Search");find.setToolTipText("Search");clear.setToolTipText("Clear Search");searchBar.add(search);searchBar.add(find);searchBar.add(clear);
             Runnable filter=()->{if(BackgroundTask.finishEdit(table))((TableRowSorter<?>)table.getRowSorter()).setRowFilter(search.getText().isBlank()?null:RowFilter.orFilter(java.util.List.of(RowFilter.regexFilter("(?i)"+java.util.regex.Pattern.quote(search.getText().trim())),new RowFilter<Object,Integer>(){public boolean include(Entry<? extends Object,? extends Integer> entry){for(int c=0;c<entry.getValueCount();c++)if(!entry.getStringValue(c).isBlank())return false;return true;}})));};find.addActionListener(e->filter.run());search.addActionListener(e->filter.run());clear.addActionListener(e->{search.setText("");filter.run();});add(searchBar,BorderLayout.NORTH);
             add(new JScrollPane(table),BorderLayout.CENTER);add(actions,BorderLayout.SOUTH);
-            SwingUtilities.invokeLater(this::reload);
+            if (loadData) SwingUtilities.invokeLater(this::reload);
         }
-        void reload(){List<Row> current=currentRows();Set<Integer> locallyDeleted=new HashSet<>(original.stream().map(Row::id).toList());locallyDeleted.removeAll(current.stream().map(Row::id).toList());BackgroundTask.run(this,()->dao.load(kind),rows->{List<Row> visible=rows.stream().filter(r->!locallyDeleted.contains(r.id())).toList();displayRows(visible,rows);});}
+        private record GridData(List<Row> rows, List<TrackTerm> tracks) { }
+        void reload() {
+            if (!BackgroundTask.finishEdit(table)) return;
+            List<Row> current=currentRows();
+            Set<Integer> locallyDeleted=new HashSet<>(original.stream().map(Row::id).toList());
+            locallyDeleted.removeAll(current.stream().map(Row::id).toList());
+            BackgroundTask.run(this,()->{
+                try (var c=DatabaseConnection.getConnection()) {
+                    return new GridData(dao.load(c,kind),
+                            kind==Kind.BLOCK||kind==Kind.COURSE ? new TrackTermDAO().load(c) : List.of());
+                }
+            },data->{
+                installTrackChoices(data.tracks());
+                List<Row> visible=data.rows().stream().filter(r->!locallyDeleted.contains(r.id())).toList();
+                displayRows(visible,data.rows());
+            });
+        }
+        void installTrackChoices(List<TrackTerm> tracks) {
+            if (kind!=Kind.BLOCK && kind!=Kind.COURSE) return;
+            JComboBox<String> choices=new JComboBox<>();
+            choices.addItem(""); // Keep unused rows empty until the user chooses an option.
+            tracks.forEach(track->choices.addItem(track.label()));
+            choices.setEditable(false);
+            choices.setMaximumRowCount(14);
+            choices.setToolTipText("Choose a track and term shared by courses and block sections.");
+            DefaultCellEditor editor=new DefaultCellEditor(choices);
+            editor.setClickCountToStart(1);
+            table.getColumnModel().getColumn(3).setCellEditor(editor);
+            table.getColumnModel().getColumn(3).setPreferredWidth(200);
+        }
         void display(List<Row> rows) { displayRows(rows, rows); }
         void displayRows(List<Row> rows, List<Row> baseline) {
             loading=true;original=List.copyOf(baseline);model.setRowCount(0);
