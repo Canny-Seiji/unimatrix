@@ -34,6 +34,7 @@ final class AutoGeneratePanel extends JPanel {
         List<ExplicitPlanner.Requirement> rows=new ArrayList<>();for(int r=0;r<requirements.getRowCount();r++){boolean blank=true;for(int col=0;col<4;col++)blank&=requirements.getValueAt(r,col)==null;if(blank)continue;
             if(!(requirements.getValueAt(r,0) instanceof Course)||!(requirements.getValueAt(r,1) instanceof BlockSection)||!(requirements.getValueAt(r,2) instanceof Faculty)||requirements.getValueAt(r,3)==null)throw new IllegalArgumentException("Complete requirement row "+(r+1));
             Course course=(Course)requirements.getValueAt(r,0);BlockSection block=(BlockSection)requirements.getValueAt(r,1);Faculty faculty=(Faculty)requirements.getValueAt(r,2);
+            if (!TrackRules.compatible(course,block)) throw new IllegalArgumentException("Requirement row "+(r+1)+": select a course and section with compatible tracks and terms.");
             rows.add(new ExplicitPlanner.Requirement(course.getId(),block.getId(),faculty.getId(),Integer.parseInt(requirements.getValueAt(r,3).toString())));}
         LocalDate first=parseDate(dates.getValueAt(0,0),"first exam date"),last=parseDate(dates.getValueAt(0,1),"last exam date");
         if(last.isBefore(first))throw new IllegalArgumentException("Last exam date must be on or after the first exam date.");

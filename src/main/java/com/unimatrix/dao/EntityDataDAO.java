@@ -25,12 +25,19 @@ public class EntityDataDAO {
     public record Row(int id, List<String> values) {
         public Row { values = List.copyOf(values); }
     }
+    private static boolean hasTrack(Kind kind) { return kind == Kind.COURSE || kind == Kind.BLOCK; }
+    private static List<String> storageColumns(Kind kind) {
+        return Arrays.stream(kind.columns).map(column -> column.equals("track") ? "track_term_id" : column).toList();
+    }
     public List<Row> load(Kind kind) throws SQLException {
         try (Connection c = DatabaseConnection.getConnection()) { return load(c, kind); }
     }
     public List<Row> load(Connection c, Kind kind) throws SQLException {
         List<Row> rows = new ArrayList<>();
-        try (PreparedStatement p = c.prepareStatement("SELECT id, " + String.join(",", kind.columns) + " FROM " + kind.table + " ORDER BY id");
+        String columns = String.join(",", Arrays.stream(kind.columns)
+                .map(column -> column.equals("track") ? "t.label AS track" : "e." + column).toList());
+        String join = hasTrack(kind) ? " JOIN track_terms t ON t.id=e.track_term_id" : "";
+        try (PreparedStatement p = c.prepareStatement("SELECT e.id," + columns + " FROM " + kind.table + " e" + join + " ORDER BY e.id");
              ResultSet r = p.executeQuery()) {
             while (r.next()) {
                 List<String> values = new ArrayList<>();
@@ -84,20 +91,21 @@ public class EntityDataDAO {
                 if(restoringDeleted&&current.containsKey(row.id())) throw new IllegalArgumentException("Unknown record identity.");
                 if(!restoringDeleted&&row.equals(original.get(row.id()))) continue;
                 String sql;
-                if(row.id()==0) sql="INSERT INTO "+kind.table+" ("+String.join(",",kind.columns)+") VALUES ("+String.join(",",Collections.nCopies(kind.columns.length,"?"))+")";
-                else if(restoringDeleted) sql="INSERT INTO "+kind.table+" (id,"+String.join(",",kind.columns)+") VALUES ("+String.join(",",Collections.nCopies(kind.columns.length+1,"?"))+")";
-                else sql="UPDATE "+kind.table+" SET "+String.join(",",Arrays.stream(kind.columns).map(s->s+"=?").toList())+" WHERE id=?";
+                if(row.id()==0) sql="INSERT INTO "+kind.table+" ("+String.join(",",storageColumns(kind))+") VALUES ("+String.join(",",Collections.nCopies(kind.columns.length,"?"))+")";
+                else if(restoringDeleted) sql="INSERT INTO "+kind.table+" (id,"+String.join(",",storageColumns(kind))+") VALUES ("+String.join(",",Collections.nCopies(kind.columns.length+1,"?"))+")";
+                else sql="UPDATE "+kind.table+" SET "+String.join(",",storageColumns(kind).stream().map(s->s+"=?").toList())+" WHERE id=?";
                 try(PreparedStatement p=c.prepareStatement(sql)) {
                     int parameter=1;
                     if(restoringDeleted) p.setInt(parameter++,row.id());
                     for(int i=0;i<row.values().size();i++) {
-                        if(kind.limits[i]>0) p.setString(parameter++,row.values().get(i));
+                        if(kind.columns[i].equals("track")) p.setInt(parameter++,TrackTermDAO.requireId(c,row.values().get(i)));
+                        else if(kind.limits[i]>0) p.setString(parameter++,row.values().get(i));
                         else p.setInt(parameter++,Integer.parseInt(row.values().get(i)));
                     }
                     if(row.id()>0&&!restoringDeleted) p.setInt(parameter,row.id());
                     if(p.executeUpdate()!=1) throw new SQLException("Record was not saved.");
                 }
-            }            // Capacity/population edits must not invalidate active timetables. Trash is revalidated on save/publication.
+            }            // Capacity, population and track edits must not invalidate active timetables. Trash is revalidated on save/publication.
             if(kind!=Kind.FACULTY) for(int id:affectedSchedules) {
                 try { ScheduleEditorService.validateStored(c,id); }
                 catch(IllegalArgumentException ex) { throw new IllegalArgumentException("Change would invalidate schedule #"+id+": "+ex.getMessage(),ex); }

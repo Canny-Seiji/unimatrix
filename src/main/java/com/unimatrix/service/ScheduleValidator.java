@@ -19,7 +19,7 @@ public final class ScheduleValidator {
             BlockSection b = blocks.get(e.getBlockSectionId());
             if (c == null || r == null || b == null || !facultyIds.contains(e.getFacultyId()))
                 throw new IllegalArgumentException(prefix + "select an existing course, room, block and faculty member.");
-            if (!c.getTrack().equalsIgnoreCase("General") && !c.getTrack().equalsIgnoreCase(b.getTrack()))
+            if (!TrackRules.compatible(c, b))
                 throw new IllegalArgumentException(prefix + "course track '" + c.getTrack() + "' is not available to section track '" + b.getTrack() + "'.");
             if (e.getExamDate() == null || e.getExamDate().getDayOfWeek() == DayOfWeek.SUNDAY)
                 throw new IllegalArgumentException(prefix + "choose a date from Monday to Saturday.");
