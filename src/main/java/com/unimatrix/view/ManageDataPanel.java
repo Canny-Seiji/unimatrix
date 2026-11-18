@@ -35,7 +35,7 @@ public class ManageDataPanel extends JPanel {
         final Kind kind; final EntityDataDAO dao=new EntityDataDAO(); final DefaultTableModel model;
         final JTable table; final Set<Integer> invalid=new HashSet<>();
         List<Row> original=List.of(),lastSnapshot=List.of(); final Deque<List<Row>> undoHistory=new ArrayDeque<>(); boolean dirty,loading,loaded,restoring;
-        final JLabel status=new JLabel("Loading records..."); final JButton undo=new JButton("Undo Changes");
+        final JLabel status=new JLabel("Loading records..."); final JButton undo=ActionIcons.button("Undo Changes","undoIcon.png");
         EntityGrid(Kind kind, boolean loadData) {
             super(new BorderLayout(0,8));this.kind=kind;setOpaque(false);
             String[] labels=new String[kind.labels.length+1];labels[0]="ID";System.arraycopy(kind.labels,0,labels,1,kind.labels.length);
@@ -58,7 +58,7 @@ public class ManageDataPanel extends JPanel {
                 return Integer.compare(((Number)left).intValue(),((Number)right).intValue());
             });
             table.setRowSorter(sorter);
-            JButton add=new JButton("+"),delete=new JButton("Delete Record"),save=UniMatrixTheme.primaryButton("Save Changes"),reload=new JButton("Reload");
+            JButton add=new JButton("+"),delete=ActionIcons.button("Delete Record","trashBinIcon.png"),save=UniMatrixTheme.primaryButton("Save Changes"),reload=ActionIcons.button("Reload","refreshIcon.png");
         UniMatrixTheme.style(delete,"foreground:"+UniMatrixTheme.hex(UniMatrixTheme.DANGER)+"; hoverBackground:"+UniMatrixTheme.hex(UniMatrixTheme.DANGER_SOFT));save.setToolTipText("Save Changes");reload.setToolTipText("Reload");
             add.setToolTipText("Add");delete.setToolTipText("Delete Record");undo.setToolTipText("Undo unsaved changes in this tab");undo.setEnabled(false);
             model.addTableModelListener(e->{if(!loading&&!restoring){List<Row> now=currentRows();if(!now.equals(lastSnapshot)&&!lastSnapshot.isEmpty())undoHistory.push(lastSnapshot);lastSnapshot=now;dirty=true;putClientProperty("dirty",true);undo.setEnabled(!undoHistory.isEmpty());invalid.clear();status.setText("Unsaved changes");}});
@@ -71,7 +71,7 @@ public class ManageDataPanel extends JPanel {
             save.addActionListener(e->save());
             reload.addActionListener(e->{if(!dirty||JOptionPane.showConfirmDialog(this,"Refresh database data while keeping local deletions?","Reload",JOptionPane.YES_NO_OPTION)==JOptionPane.YES_OPTION)reload();});undo.addActionListener(e->{if(!undoHistory.isEmpty()){restoring=true;displayRows(undoHistory.pop(),original);restoring=false;undo.setEnabled(!undoHistory.isEmpty());}});
             JPanel actions=BackgroundTask.bar();actions.add(add);actions.add(delete);actions.add(save);actions.add(reload);actions.add(undo);actions.add(status);
-            JPanel searchBar=BackgroundTask.bar();JTextField search=new JTextField(22);JButton find=new JButton("Search"),clear=new JButton("Clear Search");find.setToolTipText("Search");clear.setToolTipText("Clear Search");searchBar.add(search);searchBar.add(find);searchBar.add(clear);
+            JPanel searchBar=BackgroundTask.bar();JTextField search=new JTextField(22);JButton find=ActionIcons.button("Search","searchIcon.png"),clear=new JButton("Clear Search");find.setToolTipText("Search");clear.setToolTipText("Clear Search");searchBar.add(search);searchBar.add(find);searchBar.add(clear);
             Runnable filter=()->{if(BackgroundTask.finishEdit(table))((TableRowSorter<?>)table.getRowSorter()).setRowFilter(search.getText().isBlank()?null:RowFilter.orFilter(java.util.List.of(RowFilter.regexFilter("(?i)"+java.util.regex.Pattern.quote(search.getText().trim())),new RowFilter<Object,Integer>(){public boolean include(Entry<? extends Object,? extends Integer> entry){for(int c=0;c<entry.getValueCount();c++)if(!entry.getStringValue(c).isBlank())return false;return true;}})));};find.addActionListener(e->filter.run());search.addActionListener(e->filter.run());clear.addActionListener(e->{search.setText("");filter.run();});add(searchBar,BorderLayout.NORTH);
             add(new JScrollPane(table),BorderLayout.CENTER);add(actions,BorderLayout.SOUTH);
             if (loadData) SwingUtilities.invokeLater(this::reload);

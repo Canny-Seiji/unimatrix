@@ -31,7 +31,7 @@ public class ManageSchedulesPanel extends JPanel {
     private final JTree tree=new JTree(treeModel);
     private final DefaultTableModel tableModel=new DefaultTableModel(new String[]{"Schedule","Date","Time","Course","Room","Block Section","Faculty"},0){public boolean isCellEditable(int r,int c){return false;}};
     private final JTable table=new JTable(tableModel);
-    private final JButton edit=new JButton("Open / Edit"),export=new JButton("Export PDF"),delete=new JButton("Delete");
+    private final JButton edit=new JButton("Edit"),export=new JButton("Export PDF"),delete=ActionIcons.button("Delete","trashBinIcon.png");
     private final JLabel scope=new JLabel("Select a schedule to edit or export.");
     private final Set<Integer> conflictScheduleIds=new HashSet<>(),conflictFolderIds=new HashSet<>();
     private final ManualSchedulePanel manual;
@@ -42,10 +42,10 @@ public class ManageSchedulesPanel extends JPanel {
         UniMatrixTheme.style(delete,"foreground:"+UniMatrixTheme.hex(UniMatrixTheme.DANGER)+"; hoverBackground:"+UniMatrixTheme.hex(UniMatrixTheme.DANGER_SOFT));
         manual=new ManualSchedulePanel(this::saved);
         automatic=new AutoGeneratePanel(this::saved);
-        JPanel actions=BackgroundTask.bar();JButton addFolder=new JButton("New Folder"),newSchedule=new JButton("New Schedule"),refresh=new JButton("Refresh");addFolder.setToolTipText("New Folder");newSchedule.setToolTipText("New Schedule");refresh.setToolTipText("Refresh");edit.setToolTipText("Open / Edit");export.setToolTipText("Export PDF");delete.setToolTipText("Delete");
-        JButton rename=new JButton("Rename / Move"),history=new JButton("History / Undo"),trash=new JButton("Trash / Restore"),newManual=new JButton("New Manual Schedule");rename.setToolTipText("Rename / Move");history.setToolTipText("History / Undo");trash.setToolTipText("Trash / Restore");newManual.setToolTipText("New Manual Schedule");
+        JPanel actions=BackgroundTask.bar();JButton addFolder=ActionIcons.button("New Folder","addFolderIcon.png"),newSchedule=ActionIcons.button("New Schedule","newSchedIcon.png"),refresh=ActionIcons.button("Refresh","refreshIcon.png");addFolder.setToolTipText("New Folder");newSchedule.setToolTipText("New Schedule");refresh.setToolTipText("Refresh");edit.setToolTipText("Edit");export.setToolTipText("Export PDF");delete.setToolTipText("Delete");
+        JButton rename=new JButton("Rename / Move"),history=new JButton("History / Undo"),trash=ActionIcons.button("Trash / Restore","restoreIcon.png"),newManual=ActionIcons.button("New Manual Schedule","manualScheduleIcon.png");rename.setToolTipText("Rename / Move");history.setToolTipText("History / Undo");trash.setToolTipText("Trash / Restore");newManual.setToolTipText("New Manual Schedule");
         actions.add(addFolder);actions.add(newSchedule);actions.add(newManual);actions.add(edit);actions.add(export);actions.add(delete);actions.add(refresh);
-        actions.add(rename);actions.add(history);actions.add(trash);
+        actions.add(rename);actions.add(trash);
         rename.addActionListener(e->renameMove());history.addActionListener(e->history());trash.addActionListener(e->restoreTrash());newManual.addActionListener(e->{manual.newSchedule(selectedFolder(),selectedFolderLabel());tabs.setSelectedIndex(2);});
         addFolder.addActionListener(e->createFolder());newSchedule.addActionListener(e->{automatic.setDestination(selectedFolder(),selectedFolderLabel());tabs.setSelectedIndex(1);});
         refresh.addActionListener(e->refresh());edit.addActionListener(e->openSelected());export.addActionListener(e->exportSelected());delete.addActionListener(e->deleteSelected());
@@ -69,7 +69,7 @@ public class ManageSchedulesPanel extends JPanel {
         for(int i=0;i<table.getColumnCount();i++)table.getColumnModel().getColumn(i).setPreferredWidth(i==0?170:i==3?160:140);
         JPanel left=new Card(new BorderLayout());left.add(new JScrollPane(tree));left.setMinimumSize(new Dimension(180,100));
         JPanel right=new Card(new BorderLayout(0,8));right.add(scope,BorderLayout.NORTH);right.add(new JScrollPane(table));
-        JPanel searchBar=BackgroundTask.bar();JTextField search=new JTextField(20);JButton searchBtn=new JButton("Search"),clear=new JButton("Clear");searchBar.add(new JLabel("Search displayed schedules:"));searchBar.add(search);searchBar.add(searchBtn);searchBar.add(clear);
+        JPanel searchBar=BackgroundTask.bar();JTextField search=new JTextField(20);JButton searchBtn=ActionIcons.button("Search","searchIcon.png"),clear=new JButton("Clear");searchBar.add(new JLabel("Search displayed schedules:"));searchBar.add(search);searchBar.add(searchBtn);searchBar.add(clear);
         Runnable filter=()->((TableRowSorter<?>)table.getRowSorter()).setRowFilter(search.getText().isBlank()?null:RowFilter.regexFilter("(?i)"+java.util.regex.Pattern.quote(search.getText().trim())));
         searchBtn.addActionListener(e->filter.run());search.addActionListener(e->filter.run());clear.addActionListener(e->{search.setText("");filter.run();});right.add(searchBar,BorderLayout.SOUTH);
         JSplitPane split=new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,left,right);split.setDividerLocation(240);split.setResizeWeight(.2);split.setBorder(null);split.setOpaque(false);split.setDividerSize(8);

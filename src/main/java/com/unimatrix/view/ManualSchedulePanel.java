@@ -48,7 +48,7 @@ public class ManualSchedulePanel extends JPanel {
         JPanel destinationBar=BackgroundTask.bar();destinationBar.add(location);JButton changeDestination=new JButton("Change Destination");changeDestination.addActionListener(e->chooseDestination());destinationBar.add(changeDestination);top.add(destinationBar);
         JPanel filterBar=new JPanel(new GridLayout(1,4,8,0));filterBar.setOpaque(false);
         for(String label:List.of("Course","Room","Block","Faculty")) {JComboBox<Choice> box=new JComboBox<>();box.setPreferredSize(new Dimension(135,34));filters.add(box);filterBar.add(labeled(label,box));}
-        JButton filter=new JButton("Filter"),find=new JButton("Search"),clear=new JButton("Clear Filters");
+        JButton filter=new JButton("Filter"),find=ActionIcons.button("Search","searchIcon.png"),clear=new JButton("Clear Filters");
         filter.addActionListener(e->applyFilter());find.addActionListener(e->applyFilter());search.addActionListener(e->applyFilter());
         clear.addActionListener(e->clearFilters());top.add(filterBar);
         JPanel searchBar=BackgroundTask.bar();field(searchBar,"Search all columns",search);searchBar.add(filter);searchBar.add(find);searchBar.add(clear);top.add(searchBar);
@@ -61,7 +61,7 @@ public class ManualSchedulePanel extends JPanel {
         sorter.setComparator(5,ManualSchedulePanel::compareTimes);
         sorter.setComparator(6,ManualSchedulePanel::compareTimes);
         int[] widths={240,190,160,200,130,120,120};for(int i=0;i<widths.length;i++)table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
-        JPanel bottom=BackgroundTask.bar();JButton add=new JButton("+"),delete=new JButton("Delete Record"),reload=new JButton("Refresh Choices");
+        JPanel bottom=BackgroundTask.bar();JButton add=new JButton("+"),delete=ActionIcons.button("Delete Record","trashBinIcon.png"),reload=ActionIcons.button("Refresh Choices","refreshIcon.png");
         UniMatrixTheme.style(delete,"foreground:"+UniMatrixTheme.hex(UniMatrixTheme.DANGER)+"; hoverBackground:"+UniMatrixTheme.hex(UniMatrixTheme.DANGER_SOFT));
         add.setToolTipText("Add a blank exam row");
         add.addActionListener(e->{if(BackgroundTask.finishEdit(table)){model.addRow(new Object[7]);int r=table.convertRowIndexToView(model.getRowCount()-1);if(r>=0)table.scrollRectToVisible(table.getCellRect(r,0,true));}});
