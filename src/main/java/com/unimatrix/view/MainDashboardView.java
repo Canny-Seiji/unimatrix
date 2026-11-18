@@ -57,6 +57,7 @@ public class MainDashboardView extends JFrame {
 
     public MainDashboardView(String username, DashboardDataProvider provider, Runnable onLogout) {
         super("UniMatrix");
+        setIconImages(AppBranding.windowIcons());
         this.onLogout = onLogout;
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         addWindowListener(new java.awt.event.WindowAdapter() {
@@ -253,7 +254,7 @@ public class MainDashboardView extends JFrame {
         header.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, UniMatrixTheme.BORDER),
                 new EmptyBorder(16, UniMatrixTheme.PAD, 16, UniMatrixTheme.PAD)));
-        JPanel userBox=new JPanel(new FlowLayout(FlowLayout.RIGHT,8,0));userBox.setOpaque(false);headerIcon=new JLabel(UIManager.getIcon("FileView.fileIcon"));userBox.add(headerIcon);refreshHeaderIcon(username);
+        JPanel userBox=new JPanel(new FlowLayout(FlowLayout.RIGHT,8,0));userBox.setOpaque(false);headerIcon=new com.unimatrix.view.components.CircularAvatarLabel(UIManager.getIcon("FileView.fileIcon"));userBox.add(headerIcon);refreshHeaderIcon(username);
         header.add(pageTitle, BorderLayout.WEST);
         header.add(userBox, BorderLayout.EAST);
 
@@ -273,6 +274,3 @@ private JComponent placeholder(Page page) {
         return p;
     }
 }
-
-
-

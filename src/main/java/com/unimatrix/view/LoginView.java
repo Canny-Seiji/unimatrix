@@ -34,6 +34,7 @@ public class LoginView extends JFrame {
 
     public LoginView() {
         super("UniMatrix - Login");
+        setIconImages(AppBranding.windowIcons());
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(920, 600);
         setLocationRelativeTo(null);
