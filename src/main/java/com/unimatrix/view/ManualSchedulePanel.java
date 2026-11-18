@@ -20,7 +20,8 @@ public class ManualSchedulePanel extends JPanel {
     private final Consumer<Integer> onSaved;
     private final ScheduleFolderDAO folderDAO=new ScheduleFolderDAO();
     private ScheduleEditorService.Catalog catalog;
-    private final JTextField name=new JTextField(18),year=new JTextField(10),semester=new JTextField(10),search=new JTextField(16);
+    private final JTextField name=new JTextField(18),search=new JTextField(16);
+    private final JComboBox<String> year=AcademicChoices.years(),semester=AcademicChoices.semesters();
     private final JComboBox<String> period=new JComboBox<>(new String[]{"Prelims","Midterms","Finals","Other"});
     private final List<JComboBox<Choice>> filters=new ArrayList<>();
     private final Set<Integer> invalid=new HashSet<>();
@@ -73,7 +74,7 @@ public class ManualSchedulePanel extends JPanel {
         add(top,BorderLayout.NORTH);add(scroll,BorderLayout.CENTER);add(bottom,BorderLayout.SOUTH);
         model.addTableModelListener(e->{if(!loading){dirty=true;putClientProperty("dirty",true);if(e.getFirstRow()>=0)for(int row=e.getFirstRow();row<=e.getLastRow();row++)invalid.remove(row);status.setText("Unsaved changes");table.repaint();}});
         DocumentListener listener=new DocumentListener(){public void insertUpdate(DocumentEvent e){changed();}public void removeUpdate(DocumentEvent e){changed();}public void changedUpdate(DocumentEvent e){changed();}};
-        name.getDocument().addDocumentListener(listener);year.getDocument().addDocumentListener(listener);semester.getDocument().addDocumentListener(listener);
+        name.getDocument().addDocumentListener(listener);year.addActionListener(e->changed());semester.addActionListener(e->changed());
         period.addActionListener(e->changed());reset(null,"Root workspace");if (loadData) SwingUtilities.invokeLater(this::refreshChoices);
     }
     private void changed(){if(!loading){dirty=true;putClientProperty("dirty",true);status.setText("Unsaved changes");}}
@@ -95,7 +96,7 @@ public class ManualSchedulePanel extends JPanel {
     }
     public void newSchedule(Integer folder,String label) {if(mayReplaceDraft()){reset(folder,label);refreshChoices();}}
     private void reset(Integer folder,String label) {
-        loading=true;scheduleId=0;revision=0;folderId=folder;name.setText("");year.setText("");semester.setText("");period.setSelectedItem("Midterms");location.setText(label);
+        loading=true;scheduleId=0;revision=0;folderId=folder;name.setText("");year.setSelectedItem("2026-2027");semester.setSelectedIndex(0);period.setSelectedItem("Midterms");location.setText(label);
         model.setRowCount(0);model.addRow(new Object[7]);model.addRow(new Object[7]);clearFilters();loading=false;dirty=false;putClientProperty("dirty",false);save.setText("Save Schedule");saveAs.setEnabled(false);status.setText("Two blank rows ready.");
     }
     public void open(int id) {
@@ -124,7 +125,7 @@ public class ManualSchedulePanel extends JPanel {
         return id==0?null:new Choice(id,fallback==null?"[Missing #"+id+"]":fallback);
     }
     private void display(ScheduleDocument d) {
-        loading=true;scheduleId=d.id();folderId=d.folderId();revision=d.revision();name.setText(d.name());period.setSelectedItem(d.period());year.setText(d.academicYear());semester.setText(d.semester());
+        loading=true;scheduleId=d.id();folderId=d.folderId();revision=d.revision();name.setText(d.name());period.setSelectedItem(d.period());AcademicChoices.loadYear(year,d.academicYear());AcademicChoices.loadSemester(semester,d.semester());
         location.setText("Schedule #"+d.id());model.setRowCount(0);invalid.clear();
         for(ExamSchedule e:d.exams()) {
             String start="",end="";try{var times=ExamTimes.interval(e.getTimeSlot());start=times[0].format(java.time.format.DateTimeFormatter.ofPattern("h:mm a",java.util.Locale.ENGLISH));end=times[1].format(java.time.format.DateTimeFormatter.ofPattern("h:mm a",java.util.Locale.ENGLISH));}catch(RuntimeException ignored){ }
@@ -152,6 +153,7 @@ public class ManualSchedulePanel extends JPanel {
         }});
     }
     ScheduleDocument draft() {
+        String academicYear=AcademicChoices.requireYear(year),selectedSemester=AcademicChoices.requireSemester(semester);
         if(catalog==null)throw new IllegalArgumentException("Load entity choices before saving.");
         if(!BackgroundTask.finishEdit(table))throw new IllegalArgumentException("Finish editing the current cell.");
         List<ExamSchedule> exams=new ArrayList<>();List<Integer> sourceRows=new ArrayList<>();List<String> errors=new ArrayList<>();invalid.clear();
@@ -173,7 +175,7 @@ public class ManualSchedulePanel extends JPanel {
         if(!errors.isEmpty()){sorter.setRowFilter(null);table.repaint();throw new IllegalArgumentException(String.join("\n",errors));}
         if(exams.isEmpty())throw new IllegalArgumentException("Add at least one completed exam row.");
         lastSourceRows=List.copyOf(sourceRows);
-        return new ScheduleDocument(scheduleId,folderId,name.getText(),(String)period.getSelectedItem(),year.getText(),semester.getText(),revision,exams);
+        return new ScheduleDocument(scheduleId,folderId,name.getText(),(String)period.getSelectedItem(),academicYear,selectedSemester,revision,exams);
     }
     private String visibleRows(String message) {
         if(message==null||lastSourceRows.isEmpty()) return message;
