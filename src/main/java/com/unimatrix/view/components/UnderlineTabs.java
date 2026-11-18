@@ -55,11 +55,10 @@ public final class UnderlineTabs extends JPanel {
         for (int i = 0; i < buttons.size(); i++) {
             JButton button = buttons.get(i);
             boolean selected = i == selectedIndex;
-            button.setBackground(selected ? Color.WHITE : new Color(0xF1F5F9));
-            button.setForeground(selected ? new Color(0x0F172A) : new Color(0x64748B));
+            button.setBackground(selected ? UniMatrixTheme.ACCENT_SOFT : UniMatrixTheme.SURFACE);
+            button.setForeground(selected ? UniMatrixTheme.ACCENT : UniMatrixTheme.TEXT_MUTED);
             button.setBorder(BorderFactory.createMatteBorder(0, 0, selected ? 3 : 1, 0,
-                    selected ? new Color(0x3B82F6) : UniMatrixTheme.BORDER));
+                    selected ? UniMatrixTheme.ACCENT : UniMatrixTheme.BORDER));
         }
     }
 }
-

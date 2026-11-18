@@ -133,7 +133,7 @@ public class MainDashboardView extends JFrame {
     }
 
     private JPanel buildSidebar() {
-        sidebar.setBackground(UniMatrixTheme.SURFACE);
+        sidebar.setBackground(UniMatrixTheme.SIDEBAR_BG);
         sidebar.setPreferredSize(new Dimension(COLLAPSED_WIDTH, 0));
         sidebar.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 0, 1, UniMatrixTheme.BORDER),
@@ -220,7 +220,7 @@ public class MainDashboardView extends JFrame {
 
     private void styleToggleBrandButton(JButton btn) {
         btn.setFont(UniMatrixTheme.font(Font.BOLD, 15f));
-        btn.setForeground(UniMatrixTheme.TEXT);
+        btn.setForeground(UniMatrixTheme.SIDEBAR_TEXT);
         btn.setHorizontalAlignment(SwingConstants.LEFT);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -229,11 +229,11 @@ public class MainDashboardView extends JFrame {
 
         // Matches SidebarButton styling and margin for alignment
         UniMatrixTheme.style(btn,
-                "background:" + UniMatrixTheme.hex(UniMatrixTheme.SURFACE)
-                + "; foreground:" + UniMatrixTheme.hex(UniMatrixTheme.TEXT)
-                + "; hoverBackground:#F1F5F9"
-                + "; pressedBackground:#E2E8F0"
-                + "; borderWidth:0; focusWidth:0; arc:8; margin:8,13,8,13");
+                "background:" + UniMatrixTheme.hex(UniMatrixTheme.SIDEBAR_BG)
+                + "; foreground:" + UniMatrixTheme.hex(UniMatrixTheme.SIDEBAR_TEXT)
+                + "; hoverBackground:" + UniMatrixTheme.hex(UniMatrixTheme.SIDEBAR_HOVER)
+                + "; pressedBackground:" + UniMatrixTheme.hex(UniMatrixTheme.SIDEBAR_SELECTED)
+                + "; borderWidth:0; focusWidth:0; arc:12; margin:8,13,8,13");
 
     }
 
@@ -269,7 +269,7 @@ public class MainDashboardView extends JFrame {
 private JComponent placeholder(Page page) {
         JPanel p = new JPanel(new GridBagLayout());
         p.setOpaque(false);
-        p.add(UniMatrixTheme.muted(page.title() + " — not built yet"));
+        p.add(UniMatrixTheme.muted(page.title() + " â€” not built yet"));
         return p;
     }
 }

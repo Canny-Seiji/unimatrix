@@ -1,5 +1,6 @@
 package com.unimatrix.view;
 import javax.swing.*;
+import com.unimatrix.view.theme.UniMatrixTheme;
 import javax.swing.table.*;
 import java.awt.*;
 import java.time.*;
@@ -21,8 +22,8 @@ final class PlannerControls {
             }
         };
     }
-    static Color stripe(int row){return row%2==0?new Color(248,248,248):new Color(229,231,234);}
-    static void stripes(JTable table){table.setDefaultRenderer(Object.class,new DefaultTableCellRenderer(){public Component getTableCellRendererComponent(JTable t,Object v,boolean selected,boolean focus,int row,int col){Component c=super.getTableCellRendererComponent(t,v,selected,focus,row,col);if(!selected)c.setBackground(stripe(row));return c;}});table.setRowHeight(32);table.setShowHorizontalLines(true);table.setGridColor(new Color(205,208,213));}
+    static Color stripe(int row){return row%2==0?UniMatrixTheme.SURFACE:UniMatrixTheme.ROW_ALTERNATE;}
+    static void stripes(JTable table){table.setDefaultRenderer(Object.class,new DefaultTableCellRenderer(){public Component getTableCellRendererComponent(JTable t,Object v,boolean selected,boolean focus,int row,int col){Component c=super.getTableCellRendererComponent(t,v,selected,focus,row,col);if(!selected)c.setBackground(stripe(row));return c;}});table.setRowHeight(32);table.setShowHorizontalLines(true);table.setGridColor(UniMatrixTheme.BORDER);}
     static void calendar(JTable table,int column){table.getColumnModel().getColumn(column).setCellEditor(new CalendarEditor());}
     static final class CalendarEditor extends AbstractCellEditor implements TableCellEditor {
         final JButton button=new JButton("Choose date");String value="";

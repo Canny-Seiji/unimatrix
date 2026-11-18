@@ -13,8 +13,9 @@ public class StatCard extends Card {
     public StatCard(String caption) {
         super(new BorderLayout(0, 6));
         JLabel cap = UniMatrixTheme.muted(caption);
+        cap.setFont(UniMatrixTheme.font(Font.BOLD, 13f));
         valueLabel.setFont(UniMatrixTheme.font(Font.BOLD, 30f));
-        valueLabel.setForeground(UniMatrixTheme.TEXT);
+        valueLabel.setForeground(UniMatrixTheme.SUCCESS);
         add(cap, BorderLayout.NORTH);
         add(valueLabel, BorderLayout.CENTER);
     }
@@ -25,7 +26,7 @@ public class StatCard extends Card {
     }
 
     public void setValue(int value) {
-        valueLabel.setForeground(UniMatrixTheme.TEXT);
+        valueLabel.setForeground(UniMatrixTheme.SUCCESS);
         valueLabel.setText(String.valueOf(value));
     }
 

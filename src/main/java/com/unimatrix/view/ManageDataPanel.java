@@ -43,14 +43,14 @@ public class ManageDataPanel extends JPanel {
             table=new JTable(model) {
                 public Component prepareRenderer(TableCellRenderer r,int row,int column) {
                     Component c=super.prepareRenderer(r,row,column);
-                    if(!isRowSelected(row)) c.setBackground(invalid.contains(convertRowIndexToModel(row))?new Color(255,225,225):PlannerControls.stripe(row));
+                    if(!isRowSelected(row)) c.setBackground(invalid.contains(convertRowIndexToModel(row))?UniMatrixTheme.DANGER_SOFT:PlannerControls.stripe(row));
                     return c;
                 }
             };
             table.putClientProperty("terminateEditOnFocusLost",true);table.setRowHeight(32);
-            table.setFont(UniMatrixTheme.font(Font.PLAIN,12f));
-            table.getTableHeader().setFont(UniMatrixTheme.font(Font.BOLD,12f));
-            table.getTableHeader().setBackground(new Color(0xF8FAFC));
+            table.setFont(UniMatrixTheme.font(Font.PLAIN,13f));
+            table.getTableHeader().setFont(UniMatrixTheme.font(Font.BOLD,13f));
+            table.getTableHeader().setBackground(UniMatrixTheme.TABLE_HEADER);
             table.setGridColor(UniMatrixTheme.BORDER);table.setShowGrid(true);
             TableRowSorter<DefaultTableModel> sorter=new TableRowSorter<>(model);
             sorter.setComparator(0,(left,right)->{
@@ -58,7 +58,8 @@ public class ManageDataPanel extends JPanel {
                 return Integer.compare(((Number)left).intValue(),((Number)right).intValue());
             });
             table.setRowSorter(sorter);
-            JButton add=new JButton("+"),delete=new JButton("Delete Record"),save=UniMatrixTheme.primaryButton("Save Changes"),reload=new JButton("Reload");save.setToolTipText("Save Changes");reload.setToolTipText("Reload");
+            JButton add=new JButton("+"),delete=new JButton("Delete Record"),save=UniMatrixTheme.primaryButton("Save Changes"),reload=new JButton("Reload");
+        UniMatrixTheme.style(delete,"foreground:"+UniMatrixTheme.hex(UniMatrixTheme.DANGER)+"; hoverBackground:"+UniMatrixTheme.hex(UniMatrixTheme.DANGER_SOFT));save.setToolTipText("Save Changes");reload.setToolTipText("Reload");
             add.setToolTipText("Add");delete.setToolTipText("Delete Record");undo.setToolTipText("Undo unsaved changes in this tab");undo.setEnabled(false);
             model.addTableModelListener(e->{if(!loading&&!restoring){List<Row> now=currentRows();if(!now.equals(lastSnapshot)&&!lastSnapshot.isEmpty())undoHistory.push(lastSnapshot);lastSnapshot=now;dirty=true;putClientProperty("dirty",true);undo.setEnabled(!undoHistory.isEmpty());invalid.clear();status.setText("Unsaved changes");}});
             add.addActionListener(e->{if(BackgroundTask.finishEdit(table)) model.addRow(new Object[model.getColumnCount()]);});
@@ -135,16 +136,3 @@ public class ManageDataPanel extends JPanel {
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

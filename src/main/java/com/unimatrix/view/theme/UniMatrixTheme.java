@@ -20,19 +20,25 @@ public final class UniMatrixTheme {
     private UniMatrixTheme() {}
 
     // Palette
-    public static final Color SIDEBAR_BG       = new Color(0x212529);
-    public static final Color SIDEBAR_HOVER    = new Color(0x2B3035);
-    public static final Color SIDEBAR_SELECTED = new Color(0x343A40);
-    public static final Color SIDEBAR_TEXT     = new Color(0xADB5BD);
-    public static final Color CONTENT_BG       = new Color(0xF5F7FA);
+    public static final Color SIDEBAR_BG       = new Color(0x172B4D);
+    public static final Color SIDEBAR_HOVER    = new Color(0x233F65);
+    public static final Color SIDEBAR_SELECTED = new Color(0x2457D6);
+    public static final Color SIDEBAR_TEXT     = new Color(0xD5E1F2);
+    public static final Color CONTENT_BG       = new Color(0xF4F7FB);
     public static final Color SURFACE          = Color.WHITE;
-    public static final Color BORDER           = new Color(0xE3E8EF);
-    public static final Color ACCENT           = new Color(0x2F6FED);
-    public static final Color ACCENT_HOVER     = new Color(0x2559C7);
-    public static final Color TEXT             = new Color(0x1F2937);
-    public static final Color TEXT_MUTED       = new Color(0x6B7280);
-    public static final Color SUCCESS          = new Color(0x198754);
-    public static final Color DANGER           = new Color(0xDC3545);
+    public static final Color BORDER           = new Color(0xDCE4EF);
+    public static final Color ACCENT           = new Color(0x2457D6);
+    public static final Color ACCENT_HOVER     = new Color(0x1D46B0);
+    public static final Color TEXT             = new Color(0x172B4D);
+    public static final Color TEXT_MUTED       = new Color(0x526176);
+    public static final Color SUCCESS          = new Color(0x0F766E);
+    public static final Color DANGER           = new Color(0xB42338);
+
+    public static final Color ACCENT_SOFT      = new Color(0xEAF0FC);
+    public static final Color TABLE_HEADER     = new Color(0xEDF2FA);
+    public static final Color ROW_ALTERNATE    = new Color(0xF5F8FC);
+    public static final Color DANGER_SOFT      = new Color(0xFDE8EC);
+    public static final Color GRID_MINOR       = new Color(0xEDF1F7);
 
     // Spacing
     public static final int PAD = 24;
@@ -44,13 +50,56 @@ public final class UniMatrixTheme {
     public static void install() {
         fontFamily = resolveFontFamily();
         UIManager.put("defaultFont", new Font(fontFamily, Font.PLAIN, 13));
-        UIManager.put("Button.arc", 8);
-        UIManager.put("Component.arc", 8);
-        UIManager.put("TextComponent.arc", 8);
+        UIManager.put("Button.arc", 12);
+        UIManager.put("Component.arc", 12);
+        UIManager.put("TextComponent.arc", 12);
         UIManager.put("Component.focusWidth", 1);
         UIManager.put("Component.accentColor", ACCENT);
         UIManager.put("ScrollBar.thumbArc", 999);
         UIManager.put("ScrollBar.width", 12);
+        UIManager.put("Panel.background", SURFACE);
+        UIManager.put("Label.foreground", TEXT);
+        UIManager.put("Button.background", SURFACE);
+        UIManager.put("Button.foreground", TEXT);
+        UIManager.put("Button.borderColor", BORDER);
+        UIManager.put("Button.hoverBackground", ACCENT_SOFT);
+        UIManager.put("Button.pressedBackground", TABLE_HEADER);
+        UIManager.put("Button.focusedBorderColor", ACCENT);
+        UIManager.put("Button.margin", new java.awt.Insets(7, 12, 7, 12));
+        UIManager.put("Component.borderColor", BORDER);
+        UIManager.put("Component.focusColor", ACCENT);
+        UIManager.put("Component.focusedBorderColor", ACCENT);
+        UIManager.put("TextField.background", SURFACE);
+        UIManager.put("TextField.foreground", TEXT);
+        UIManager.put("TextField.inactiveBackground", CONTENT_BG);
+        UIManager.put("TextField.margin", new java.awt.Insets(6, 10, 6, 10));
+        UIManager.put("PasswordField.margin", new java.awt.Insets(6, 10, 6, 10));
+        UIManager.put("ComboBox.background", SURFACE);
+        UIManager.put("ComboBox.foreground", TEXT);
+        UIManager.put("ComboBox.padding", new java.awt.Insets(5, 8, 5, 8));
+        UIManager.put("Table.background", SURFACE);
+        UIManager.put("Table.foreground", TEXT);
+        UIManager.put("Table.selectionBackground", ACCENT_SOFT);
+        UIManager.put("Table.selectionForeground", TEXT);
+        UIManager.put("Table.selectionInactiveBackground", TABLE_HEADER);
+        UIManager.put("Table.selectionInactiveForeground", TEXT);
+        UIManager.put("Table.gridColor", BORDER);
+        UIManager.put("TableHeader.background", TABLE_HEADER);
+        UIManager.put("TableHeader.foreground", TEXT);
+        UIManager.put("TableHeader.font", font(Font.BOLD, 13f));
+        UIManager.put("ScrollPane.borderColor", BORDER);
+        UIManager.put("ScrollBar.track", CONTENT_BG);
+        UIManager.put("ScrollBar.thumb", new Color(0xB4C3D8));
+        UIManager.put("Tree.background", SURFACE);
+        UIManager.put("Tree.foreground", TEXT);
+        UIManager.put("Tree.selectionBackground", ACCENT_SOFT);
+        UIManager.put("Tree.selectionForeground", TEXT);
+        UIManager.put("List.selectionBackground", ACCENT_SOFT);
+        UIManager.put("List.selectionForeground", TEXT);
+        UIManager.put("OptionPane.background", SURFACE);
+        UIManager.put("OptionPane.messageForeground", TEXT);
+        UIManager.put("ToolTip.background", TABLE_HEADER);
+        UIManager.put("ToolTip.foreground", TEXT);
         FlatLightLaf.setup();
     }
 
@@ -74,7 +123,7 @@ public final class UniMatrixTheme {
     public static JButton primaryButton(String text) {
         JButton b = new JButton(text);
         style(b, "background:" + hex(ACCENT) + "; foreground:#FFFFFF; hoverBackground:" + hex(ACCENT_HOVER)
-                + "; pressedBackground:" + hex(ACCENT_HOVER) + "; borderWidth:0; focusWidth:0; arc:8; margin:8,18,8,18");
+                + "; pressedBackground:" + hex(ACCENT_HOVER) + "; borderWidth:0; focusWidth:0; arc:12; margin:8,18,8,18");
         b.setFont(font(Font.BOLD, 13f));
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return b;
@@ -83,7 +132,7 @@ public final class UniMatrixTheme {
     public static JButton secondaryButton(String text) {
         JButton b = new JButton(text);
         style(b, "background:#FFFFFF; foreground:" + hex(TEXT) + "; borderColor:" + hex(BORDER)
-                + "; hoverBackground:" + hex(CONTENT_BG) + "; focusWidth:0; arc:8; margin:8,18,8,18");
+                + "; hoverBackground:" + hex(CONTENT_BG) + "; focusWidth:0; arc:12; margin:8,18,8,18");
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return b;
     }

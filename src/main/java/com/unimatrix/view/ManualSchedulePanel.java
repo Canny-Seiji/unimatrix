@@ -4,6 +4,7 @@ import com.unimatrix.dao.ScheduleFolderDAO;
 import com.unimatrix.model.*;
 import com.unimatrix.service.*;
 import javax.swing.*;
+import com.unimatrix.view.theme.UniMatrixTheme;
 import javax.swing.event.*;
 import javax.swing.table.*;
 import java.awt.*;
@@ -26,14 +27,14 @@ public class ManualSchedulePanel extends JPanel {
     private final JLabel status=new JLabel("New schedule"),location=new JLabel("Root workspace");
     private int scheduleId; private Integer folderId; private long revision; private boolean dirty,loading;
     private List<Integer> lastSourceRows=List.of();
-    private final JButton save=new JButton("Save Schedule"),saveAs=new JButton("Save As New");
+    private final JButton save=UniMatrixTheme.primaryButton("Save Schedule"),saveAs=new JButton("Save As New");
     private final DefaultTableModel model=new DefaultTableModel(new String[]{"Course","Room","Block Section","Faculty","Exam Date","Start Time","End Time"},0) {
         public boolean isCellEditable(int r,int c){return true;}
     };
     private final JTable table=new JTable(model) {
         public Component prepareRenderer(TableCellRenderer r,int row,int col) {
             Component c=super.prepareRenderer(r,row,col);
-            if(!isRowSelected(row))c.setBackground(invalid.contains(convertRowIndexToModel(row))?new Color(255,225,225):PlannerControls.stripe(row));
+            if(!isRowSelected(row))c.setBackground(invalid.contains(convertRowIndexToModel(row))?UniMatrixTheme.DANGER_SOFT:PlannerControls.stripe(row));
             return c;
         }
     };
@@ -46,7 +47,7 @@ public class ManualSchedulePanel extends JPanel {
         meta.add(labeled("Name",name));meta.add(labeled("Period",period));meta.add(labeled("Academic year",year));meta.add(labeled("Semester",semester));top.add(meta);
         JPanel destinationBar=BackgroundTask.bar();destinationBar.add(location);JButton changeDestination=new JButton("Change Destination");changeDestination.addActionListener(e->chooseDestination());destinationBar.add(changeDestination);top.add(destinationBar);
         JPanel filterBar=new JPanel(new GridLayout(1,4,8,0));filterBar.setOpaque(false);
-        for(String label:List.of("Course","Room","Block","Faculty")) {JComboBox<Choice> box=new JComboBox<>();box.setPreferredSize(new Dimension(135,28));filters.add(box);filterBar.add(labeled(label,box));}
+        for(String label:List.of("Course","Room","Block","Faculty")) {JComboBox<Choice> box=new JComboBox<>();box.setPreferredSize(new Dimension(135,34));filters.add(box);filterBar.add(labeled(label,box));}
         JButton filter=new JButton("Filter"),find=new JButton("Search"),clear=new JButton("Clear Filters");
         filter.addActionListener(e->applyFilter());find.addActionListener(e->applyFilter());search.addActionListener(e->applyFilter());
         clear.addActionListener(e->clearFilters());top.add(filterBar);
@@ -61,6 +62,7 @@ public class ManualSchedulePanel extends JPanel {
         sorter.setComparator(6,ManualSchedulePanel::compareTimes);
         int[] widths={240,190,160,200,130,120,120};for(int i=0;i<widths.length;i++)table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         JPanel bottom=BackgroundTask.bar();JButton add=new JButton("+"),delete=new JButton("Delete Record"),reload=new JButton("Refresh Choices");
+        UniMatrixTheme.style(delete,"foreground:"+UniMatrixTheme.hex(UniMatrixTheme.DANGER)+"; hoverBackground:"+UniMatrixTheme.hex(UniMatrixTheme.DANGER_SOFT));
         add.setToolTipText("Add a blank exam row");
         add.addActionListener(e->{if(BackgroundTask.finishEdit(table)){model.addRow(new Object[7]);int r=table.convertRowIndexToView(model.getRowCount()-1);if(r>=0)table.scrollRectToVisible(table.getCellRect(r,0,true));}});
         delete.addActionListener(e->{if(!BackgroundTask.finishEdit(table))return;int[] rows=Arrays.stream(table.getSelectedRows()).map(table::convertRowIndexToModel).sorted().toArray();for(int i=rows.length-1;i>=0;i--)model.removeRow(rows[i]);});

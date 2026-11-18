@@ -71,7 +71,7 @@ public class LoginView extends JFrame {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
                 // Deep primary blue background matching UniMatrix accent
-                g2.setPaint(new Color(0x25, 0x63, 0xEB));
+                g2.setPaint(UniMatrixTheme.SIDEBAR_BG);
                 g2.fillRect(0, 0, getWidth(), getHeight());
 
                 // Subtle vector geometric background curves
@@ -130,7 +130,7 @@ public class LoginView extends JFrame {
         // Slogan / Quote
         JLabel quote = new JLabel("<html><div style='width:300px'>Skip repetitive and manual conflict checks. Experience automated timetable optimization, smart faculty allocation, and instant matrix generation!</div></html>");
         quote.setFont(UniMatrixTheme.font(Font.PLAIN, 13f));
-        quote.setForeground(new Color(0xE0, 0xE7, 0xFF));
+        quote.setForeground(UniMatrixTheme.SIDEBAR_TEXT);
         quote.setAlignmentX(LEFT_ALIGNMENT);
         quote.setPreferredSize(new Dimension(380, 75));
         quote.setMaximumSize(new Dimension(380, 100));
@@ -142,7 +142,7 @@ public class LoginView extends JFrame {
         centerStack.add(quote);
 
         // Footer copyright
-        JLabel footer = new JLabel("© 2026 UniMatrix. All rights reserved.");
+        JLabel footer = new JLabel("Â© 2026 UniMatrix. All rights reserved.");
         footer.setFont(UniMatrixTheme.font(Font.PLAIN, 11f));
         footer.setForeground(new Color(255, 255, 255, 160));
 
@@ -167,7 +167,7 @@ public class LoginView extends JFrame {
         // Brand Name
         JLabel brand = new JLabel("UniMatrix");
         brand.setFont(UniMatrixTheme.font(Font.BOLD, 18f));
-        brand.setForeground(UniMatrixTheme.TEXT);
+        brand.setForeground(UniMatrixTheme.ACCENT);
         gbc.insets = new Insets(0, 0, 32, 0);
         form.add(brand, gbc);
 

@@ -53,8 +53,8 @@ final class ScheduleOverview {
     private static final int DAY_WIDTH = 86;
     private static final int TOP = 8;
     private static final Color[] COLORS = {
-        new Color(0x2563EB), new Color(0x047857),
-        new Color(0x7C3AED), new Color(0x0F766E)
+        UniMatrixTheme.ACCENT, UniMatrixTheme.SUCCESS,
+        new Color(0x6554A4), new Color(0x236784)
     };
 
     private final Card calendar = new Card(new BorderLayout(0, 12));
@@ -161,7 +161,7 @@ final class ScheduleOverview {
     private void render() {
         DateTimeFormatter weekFormat = DateTimeFormatter.ofPattern(
             "MMM d, yyyy", java.util.Locale.ENGLISH);
-        month.setText(week.format(weekFormat) + " – "
+        month.setText(week.format(weekFormat) + " \u2013 "
             + week.plusDays(6).format(weekFormat));
         dayHeader.removeAll();
         for (int column = 0; column < 8; column++) {
@@ -171,8 +171,8 @@ final class ScheduleOverview {
             label.setFont(UniMatrixTheme.font(Font.BOLD, 11f));
             label.setForeground(UniMatrixTheme.TEXT);
             label.setOpaque(true);
-            label.setBackground(new Color(0xF8FAFC));
-            label.setBorder(BorderFactory.createLineBorder(new Color(0xF1F5F9)));
+            label.setBackground(UniMatrixTheme.TABLE_HEADER);
+            label.setBorder(BorderFactory.createLineBorder(UniMatrixTheme.GRID_MINOR));
             dayHeader.add(label);
         }
         List<ExamSchedule> visible = exams.stream().filter(e -> !e.getExamDate().isBefore(week)
@@ -184,7 +184,7 @@ final class ScheduleOverview {
             JPanel row = new JPanel(new BorderLayout(0, 5));
             row.setOpaque(false);
             row.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(0xE2E8F0)),
+                BorderFactory.createLineBorder(UniMatrixTheme.BORDER),
                 new EmptyBorder(8, 12, 8, 12)));
             JLabel date = UniMatrixTheme.muted(exam.getExamDate() + " · "
                 + Objects.toString(exam.getTimeSlot(), ""));
@@ -262,7 +262,7 @@ final class ScheduleOverview {
     private final class CalendarGrid extends JPanel implements Scrollable {
         private final List<Block> blocks = new ArrayList<>();
 
-        CalendarGrid() { setLayout(null); setBackground(Color.WHITE); }
+        CalendarGrid() { setLayout(null); setBackground(UniMatrixTheme.SURFACE); }
 
         void showExams(List<ExamSchedule> visible) {
             removeAll(); blocks.clear();
@@ -322,14 +322,14 @@ final class ScheduleOverview {
             Graphics2D g = (Graphics2D) graphics.create();
             g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
                 RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            g.setColor(new Color(0xF8FAFC));
+            g.setColor(UniMatrixTheme.TABLE_HEADER);
             g.fillRect(0, 0, TIME_WIDTH, getHeight());
             g.setFont(UniMatrixTheme.font(Font.BOLD, 11f));
             FontMetrics fm = g.getFontMetrics();
             for (int minute = START_MINUTE; minute <= END_MINUTE; minute += 30) {
                 int y = minuteY(minute);
                 boolean hour = minute % 60 == 0;
-                g.setColor(new Color(hour ? 0xE3E8EF : 0xF1F5F9));
+                g.setColor(hour ? UniMatrixTheme.BORDER : UniMatrixTheme.GRID_MINOR);
                 g.drawLine(TIME_WIDTH, y, getWidth(), y);
                 if (hour) {
                     String text = LocalTime.of(minute / 60, 0)
@@ -339,7 +339,7 @@ final class ScheduleOverview {
                         y + fm.getAscent() / 2);
                 }
             }
-            g.setColor(new Color(0xE3E8EF));
+            g.setColor(UniMatrixTheme.BORDER);
             for (int day = 0; day <= 7; day++) {
                 int x = dayX(day, getWidth());
                 g.drawLine(x, 0, x, getHeight());

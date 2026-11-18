@@ -26,15 +26,15 @@ public class SidebarButton extends JToggleButton {
 
         // Style button with FlatLaf properties
         UniMatrixTheme.style(this,
-                "background:" + UniMatrixTheme.hex(UniMatrixTheme.SURFACE)
-                + "; foreground:" + UniMatrixTheme.hex(UniMatrixTheme.TEXT_MUTED)
-                + "; hoverBackground:#F1F5F9"
-                + "; hoverForeground:#1E293B"
-                + "; pressedBackground:#1D4ED8"
+                "background:" + UniMatrixTheme.hex(UniMatrixTheme.SIDEBAR_BG)
+                + "; foreground:" + UniMatrixTheme.hex(UniMatrixTheme.SIDEBAR_TEXT)
+                + "; hoverBackground:" + UniMatrixTheme.hex(UniMatrixTheme.SIDEBAR_HOVER)
+                + "; hoverForeground:#FFFFFF"
+                + "; pressedBackground:" + UniMatrixTheme.hex(UniMatrixTheme.ACCENT_HOVER)
                 + "; pressedForeground:#FFFFFF"
-                + "; selectedBackground:#2563EB"
+                + "; selectedBackground:" + UniMatrixTheme.hex(UniMatrixTheme.SIDEBAR_SELECTED)
                 + "; selectedForeground:#FFFFFF"
-                + "; borderWidth:0; focusWidth:0; arc:8; margin:8,13,8,13");
+                + "; borderWidth:0; focusWidth:0; arc:12; margin:8,13,8,13");
 
         // Dynamically update text color on toggle selection
         addItemListener(e -> updateColors());
@@ -53,7 +53,7 @@ public class SidebarButton extends JToggleButton {
         if (isSelected()) {
             setForeground(Color.WHITE);
         } else {
-            setForeground(UniMatrixTheme.TEXT_MUTED);
+            setForeground(UniMatrixTheme.SIDEBAR_TEXT);
         }
     }
 

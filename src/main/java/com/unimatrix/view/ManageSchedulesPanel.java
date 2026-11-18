@@ -39,6 +39,7 @@ public class ManageSchedulesPanel extends JPanel {
     private int loadSequence;
     public ManageSchedulesPanel() {
         super(new BorderLayout());setOpaque(false);explorer.setOpaque(false);ToolTipManager.sharedInstance().setInitialDelay(700);ToolTipManager.sharedInstance().setDismissDelay(5000);
+        UniMatrixTheme.style(delete,"foreground:"+UniMatrixTheme.hex(UniMatrixTheme.DANGER)+"; hoverBackground:"+UniMatrixTheme.hex(UniMatrixTheme.DANGER_SOFT));
         manual=new ManualSchedulePanel(this::saved);
         automatic=new AutoGeneratePanel(this::saved);
         JPanel actions=BackgroundTask.bar();JButton addFolder=new JButton("New Folder"),newSchedule=new JButton("New Schedule"),refresh=new JButton("Refresh");addFolder.setToolTipText("New Folder");newSchedule.setToolTipText("New Schedule");refresh.setToolTipText("Refresh");edit.setToolTipText("Open / Edit");export.setToolTipText("Export PDF");delete.setToolTipText("Delete");
@@ -54,15 +55,15 @@ public class ManageSchedulesPanel extends JPanel {
                 Component c=super.getTreeCellRendererComponent(t,value,selected,expanded,leaf,row,hasFocus);
                 Object object=((DefaultMutableTreeNode)value).getUserObject();
                 boolean conflict=object instanceof ScheduleFile fileNode&&conflictScheduleIds.contains(fileNode.getId())||object instanceof ScheduleFolder folderNode&&conflictFolderIds.contains(folderNode.getId());
-                if(conflict&&!selected){c.setForeground(UniMatrixTheme.DANGER);c.setBackground(new Color(255,225,225));}
+                if(conflict&&!selected){c.setForeground(UniMatrixTheme.DANGER);c.setBackground(UniMatrixTheme.DANGER_SOFT);}
                 return c;
             }
         });
         tree.setRowHeight(26);tree.setShowsRootHandles(true);tree.addTreeSelectionListener(e->{updateButtons();loadRows();});
         tree.addMouseListener(new MouseAdapter(){public void mouseClicked(MouseEvent e){if(e.getClickCount()==2)openSelected();}});
-        table.setFont(UniMatrixTheme.font(Font.PLAIN,12f));
-        table.getTableHeader().setFont(UniMatrixTheme.font(Font.BOLD,12f));
-        table.getTableHeader().setBackground(new Color(0xF8FAFC));
+        table.setFont(UniMatrixTheme.font(Font.PLAIN,13f));
+        table.getTableHeader().setFont(UniMatrixTheme.font(Font.BOLD,13f));
+        table.getTableHeader().setBackground(UniMatrixTheme.TABLE_HEADER);
         table.setGridColor(UniMatrixTheme.BORDER);
         PlannerControls.stripes(table);table.setRowHeight(32);table.setAutoCreateRowSorter(true);table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         for(int i=0;i<table.getColumnCount();i++)table.getColumnModel().getColumn(i).setPreferredWidth(i==0?170:i==3?160:140);
@@ -151,4 +152,3 @@ public class ManageSchedulesPanel extends JPanel {
     private void history(){if(!(selectedObject() instanceof ScheduleFile file))return;BackgroundTask.run(explorer,()->new Object[]{service.load(file.getId()),ScheduleHistory.list(file.getId())},data->{
         var current=(ScheduleDocument)data[0];@SuppressWarnings("unchecked") List<ScheduleHistory.Entry> entries=(List<ScheduleHistory.Entry>)data[1];if(entries.isEmpty()){JOptionPane.showMessageDialog(this,"No earlier saved revisions.");return;}var selected=(ScheduleHistory.Entry)JOptionPane.showInputDialog(this,"Restore which saved revision? Current data will be recorded before restoration.","Schedule history",JOptionPane.PLAIN_MESSAGE,null,entries.toArray(),entries.get(0));if(selected!=null)BackgroundTask.run(explorer,()->{ScheduleHistory.restore(file.getId(),selected.id(),current.revision());return true;},ok->refresh(file.getId()));});}
 }
-
